@@ -1,7 +1,7 @@
 import React from 'react';
 import type { RedmineIssue } from '@/types';
 import { getPriorityConfig, getStatusConfig, getTrackerConfig } from '@/utils/redmine-metadata';
-import { Users, Clock, AlertCircle, User, ShieldAlert, Bookmark } from 'lucide-react';
+import { Users, Clock, AlertCircle, User, ShieldAlert, Bookmark, CheckCircle2, AlertTriangle, Minus, GitBranch } from 'lucide-react';
 import {
   HoverCard,
   HoverCardContent,
@@ -39,6 +39,7 @@ interface IssuePopoverProps {
   issue: RedmineIssue;
   container?: HTMLElement;
   usersMap?: Record<string, string>;
+  targetBranches?: string[];
 }
 
 
@@ -68,7 +69,7 @@ export function PriorityBadge({ issue }: { issue: RedmineIssue }) {
   );
 }
 
-export function IssuePopover({ issue, container, usersMap = {} }: IssuePopoverProps) {
+export function IssuePopover({ issue, container, usersMap = {}, targetBranches = [] }: IssuePopoverProps) {
   const priority = getPriorityConfig(issue.priority.id, issue.priority.name);
   const status = getStatusConfig(issue.status.id, issue.status.name);
   const tracker = getTrackerConfig(issue.tracker.id);
@@ -84,7 +85,23 @@ export function IssuePopover({ issue, container, usersMap = {} }: IssuePopoverPr
     const names = ids.map(id => usersMap[id] || id);
     responsavelRevisaoText = names.join(', ');
   }
+  const branchCustomField = issue.custom_fields?.find(f => f.id === 52 || f.name?.toLowerCase() === 'branch');
+  const redmineBranchValue = branchCustomField?.value ? String(branchCustomField.value) : '';
+  const redmineBranch = redmineBranchValue.toLowerCase();
 
+  // Versão solicitada (Versão Disponibilizado id 66, ou fixed_version nativa)
+  const versionCustomField = issue.custom_fields?.find(f => f.id === 66 || f.name?.toLowerCase().includes('versão'));
+  const redmineVersionValue = versionCustomField?.value 
+    ? String(versionCustomField.value) 
+    : (issue.fixed_version?.name || '');
+
+  const targetLower = (targetBranches || []).map(b => b.toLowerCase());
+  const hasDevelop = targetLower.some(b => b.includes('develop'));
+  const hasRelease = targetLower.some(b => b.includes('release'));
+  const hasMaster = targetLower.some(b => b.includes('master') || b.includes('main'));
+  
+  // Se no Redmine está explicitamente definido "Branch: Release" e não temos MR de release
+  const redmineDemandsRelease = redmineBranch.includes('release');
   return (
     <HoverCard openDelay={200} closeDelay={100}>
       <HoverCardTrigger asChild>
@@ -165,6 +182,112 @@ export function IssuePopover({ issue, container, usersMap = {} }: IssuePopoverPr
             <span className="text-xs text-foreground truncate">
               {issue.author.name}
             </span>
+          </div>
+          {responsavelRevisaoText && (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 w-24 text-muted-foreground text-xs font-medium">
+                <Users className="w-3.5 h-3.5" /> Revisão
+              </div>
+              <span className="text-xs font-medium text-foreground truncate">
+                {responsavelRevisaoText}
+              </span>
+            </div>
+          )}
+
+          {/* Dados Solicitados no Redmine (Branch e Versão) */}
+          {(redmineBranchValue || redmineVersionValue) && (
+            <div className="pt-2 border-t border-border/50 space-y-1">
+              {redmineBranchValue && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">Branch solicitada:</span>
+                  <span className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded text-[11px]">
+                    {redmineBranchValue}
+                  </span>
+                </div>
+              )}
+              {redmineVersionValue && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground font-medium">Versão solicitada:</span>
+                  <span className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded text-[11px]">
+                    {redmineVersionValue}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Comparativo de Branches Alvo */}
+          <div className="pt-2 border-t border-border/50 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground mb-1">
+              <span className="flex items-center gap-1">
+                <GitBranch className="w-3.5 h-3.5 text-primary/70" />
+                Branches Alvo (MRs)
+              </span>
+              {/* Validação: Se abriu pra release OU master, OBRIGATÓRIO ter develop */}
+              {(hasMaster || hasRelease) && !hasDevelop && (
+                <span className="text-[10px] text-amber-500 font-bold flex items-center gap-0.5">
+                  <AlertTriangle className="w-3 h-3" /> Falta develop
+                </span>
+              )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+              {/* Develop */}
+              <div 
+                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                  hasDevelop 
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                    : (hasMaster || hasRelease)
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-muted/40 text-muted-foreground border-transparent'
+                }`}
+              >
+                <span>develop</span>
+                {hasDevelop ? (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                ) : (hasMaster || hasRelease) ? (
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                ) : (
+                  <Minus className="w-3 h-3 opacity-40" />
+                )}
+              </div>
+
+              {/* Release */}
+              <div 
+                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                  hasRelease 
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                    : redmineDemandsRelease
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                    : 'bg-muted/40 text-muted-foreground border-transparent'
+                }`}
+              >
+                <span>release</span>
+                {hasRelease ? (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                ) : redmineDemandsRelease ? (
+                  <AlertTriangle className="w-3 h-3 text-amber-500" />
+                ) : (
+                  <Minus className="w-3 h-3 opacity-40" />
+                )}
+              </div>
+
+              {/* Master */}
+              <div 
+                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                  hasMaster 
+                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                    : 'bg-muted/40 text-muted-foreground border-transparent'
+                }`}
+              >
+                <span>master</span>
+                {hasMaster ? (
+                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                ) : (
+                  <Minus className="w-3 h-3 opacity-40" />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </HoverCardContent>

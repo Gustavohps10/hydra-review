@@ -39,6 +39,7 @@ export interface RedmineIssue {
   priority: { id: number; name: string };
   author: { id: number; name: string };
   assigned_to?: { id: number; name: string };
+  fixed_version?: { id: number; name: string };
   subject: string;
   description: string;
   done_ratio: number;

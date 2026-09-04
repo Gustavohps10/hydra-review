@@ -45,10 +45,28 @@ export default defineContentScript({
         const issueRegex = /(?:^|\b|#)(\d{4,6})\b/g;
         const domMap = new Map<number, Element[]>();
         const issueIds = new Set<number>();
+        const issueBranchesMap = new Map<number, Set<string>>();
 
-        unprocessedNodes.forEach((node) => {
+        // Varrer todos os MRs (inclusive os já processados) para ter a visão completa das branches abertas na tela
+        titleNodes.forEach((node) => {
           const text = node.textContent || '';
           let match;
+
+          // No GitLab, a branch alvo só aparece explícita com o ícone de branch quando NÃO é a branch padrão (develop).
+          // Ou seja: se tem o ícone de branch mostrando "release" ou "master", é ela. Se não tiver nada, é "develop"!
+          const row = node.closest('li.issuable-row, li.merge-request, .issuable-info-container') || node.closest('.issuable-main-info')?.parentElement;
+          let targetBranch = 'develop'; // DEFAULT!
+          if (row) {
+            const rowText = row.textContent || '';
+            // Verifica se tem ícone ou menção explícita de master ou release
+            if (/\bmaster\b/i.test(rowText) || /\bmain\b/i.test(rowText)) {
+              targetBranch = 'master';
+            } else if (/\brelease\b/i.test(rowText)) {
+              targetBranch = 'release';
+            } else if (/\bdevelop\b/i.test(rowText)) {
+              targetBranch = 'develop';
+            }
+          }
 
           while ((match = issueRegex.exec(text)) !== null) {
             const id = parseInt(match[1], 10);
@@ -57,7 +75,17 @@ export default defineContentScript({
             if (!domMap.has(id)) {
               domMap.set(id, []);
             }
-            domMap.get(id)?.push(node);
+            // Só adiciona aos nós que precisam de injeção se for nó novo não processado
+            if (unprocessedNodes.includes(node)) {
+              domMap.get(id)?.push(node);
+            }
+
+            if (targetBranch) {
+              if (!issueBranchesMap.has(id)) {
+                issueBranchesMap.set(id, new Set<string>());
+              }
+              issueBranchesMap.get(id)?.add(targetBranch);
+            }
           }
         });
 
@@ -192,9 +220,10 @@ export default defineContentScript({
             if (!badgesContainer) return;
 
             const hostElement = badgesContainer.querySelector(`.hydra-review-injected[data-issue-id="${issue.id}"]`) as any;
+            const detectedBranches = Array.from(issueBranchesMap.get(issue.id) || []);
             if (hostElement && hostElement._reactRoot) {
               const reactRoot = hostElement.shadowRoot.querySelector('div');
-              hostElement._reactRoot.render(<IssuePopover issue={issue} container={reactRoot} usersMap={usersMap} />);
+              hostElement._reactRoot.render(<IssuePopover issue={issue} container={reactRoot} usersMap={usersMap} targetBranches={detectedBranches} />);
             }
 
             // Injetar Prioridade (Esquerda) e Status (Direita) do título
