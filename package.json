@@ -11,7 +11,7 @@
     "compile": "tsc --noEmit",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "npm run zip"
+    "release": "npm run zip && changeset tag"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
