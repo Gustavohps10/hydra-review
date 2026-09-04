@@ -1,6 +1,6 @@
 {
   "name": "hydra-review",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Hydra Review Chrome Extension",
   "type": "module",
@@ -9,7 +9,10 @@
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
-    "compile": "tsc --noEmit"
+    "compile": "tsc --noEmit",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run zip"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -25,6 +28,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@changesets/cli": "^3.0.1",
     "@tailwindcss/vite": "^4.0.0",
     "@types/chrome": "^0.0.268",
     "@types/react": "^19.0.0",

@@ -7,7 +7,7 @@ export default defineConfig({
   manifest: {
     name: 'Hydra Review',
     description: 'Enriquece o code review com GitLab e Redmine',
-    version: '1.0.0',
+    version: '0.1.0',
     permissions: ['storage', 'history', 'tabs'],
     host_permissions: [
       "http://*/*",
