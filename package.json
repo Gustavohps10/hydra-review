@@ -1,6 +1,6 @@
 {
   "name": "hydra-review",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "private": true,
   "description": "Hydra Review Chrome Extension",
   "type": "module",

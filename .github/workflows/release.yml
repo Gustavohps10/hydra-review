@@ -62,7 +62,17 @@ jobs:
 
       - name: Build and Package Extension ZIP
         if: steps.release_check.outputs.should_release == 'true'
-        run: npm run zip
+        run: |
+          npm run zip
+          node -e "
+          const fs = require('fs');
+          const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+          const version = require('./package.json').version;
+          const match = changelog.match(new RegExp('## ' + version + '[\\s\\S]*?(?=\\n## |$)'));
+          if (match) {
+            fs.writeFileSync('RELEASE_NOTES.md', match[0].trim());
+          }
+          "
 
       - name: Create GitHub Release and Upload Extension Zip
         if: steps.release_check.outputs.should_release == 'true'
@@ -70,6 +80,7 @@ jobs:
         with:
           tag_name: ${{ steps.release_check.outputs.tag_name }}
           name: ${{ steps.release_check.outputs.tag_name }}
+          body_path: RELEASE_NOTES.md
           files: .output/*.zip
           generate_release_notes: true
           draft: false

@@ -1,10 +1,16 @@
 # hydra-review
 
-## 0.3.1
+## 0.4.0
 
-### Patch Changes
+### Minor Changes
 
-- 1897768: Release v0.3.1 com correções no fluxo de release e empacotamento da extensão.
+- **Resumo de Diffs por Branch no Popover**:
+  - Exibição da quantidade de arquivos alterados (`[ícone] X files`) e saldo de linhas (`+adicionadas`, `-removidas`) logo abaixo de cada branch (`develop`, `release`, `master`).
+  - Layout elegante em 2 linhas alinhadas à esquerda, acomodando grandes volumes de alterações (ex: `+100.000` linhas) sem quebra indevida.
+  - Link direto e clicável que navega para a página `/diffs` do Merge Request específico.
+  - Extração de métricas de alta precisão via `diffs_metadata.json` (sessão ativa do navegador) com fallback para a API REST oficial (`/changes`).
+  - Cache em memória inteligente para carregar instantaneamente sem chamadas repetidas.
+
 
 ## 0.3.0
 

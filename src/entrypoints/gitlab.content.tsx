@@ -5,7 +5,7 @@ import { storageService } from '@/services/storage';
 import { redmineApi } from '@/services/api/redmine';
 import { IssuePopover } from '@/components/redmine/IssuePopover';
 import { loggerService } from '@/services/logger';
-import type { RedmineIssue } from '@/types';
+import type { RedmineIssue, MRBranchInfo } from '@/types';
 
 export default defineContentScript({
   matches: ['*://gitlab.com/*', '*://gitlab2.atakone.com.br/*'],
@@ -46,6 +46,7 @@ export default defineContentScript({
         const domMap = new Map<number, Element[]>();
         const issueIds = new Set<number>();
         const issueBranchesMap = new Map<number, Set<string>>();
+        const issueMRDetailsMap = new Map<number, Map<string, MRBranchInfo>>();
 
         // Varrer todos os MRs (inclusive os já processados) para ter a visão completa das branches abertas na tela
         titleNodes.forEach((node) => {
@@ -56,6 +57,14 @@ export default defineContentScript({
           // Ou seja: se tem o ícone de branch mostrando "release" ou "master", é ela. Se não tiver nada, é "develop"!
           const row = node.closest('li.issuable-row, li.merge-request, .issuable-info-container') || node.closest('.issuable-main-info')?.parentElement;
           let targetBranch = 'develop'; // DEFAULT!
+          let mrUrl = '';
+          let mrIid = '';
+          let diffsUrl = '';
+          let filesCount = '';
+          let addedLines = '';
+          let deletedLines = '';
+
+          let projectPath = '';
           if (row) {
             const rowText = row.textContent || '';
             // Verifica se tem ícone ou menção explícita de master ou release
@@ -65,6 +74,46 @@ export default defineContentScript({
               targetBranch = 'release';
             } else if (/\bdevelop\b/i.test(rowText)) {
               targetBranch = 'develop';
+            }
+
+            // URL do MR e URL dos Diffs
+            const mrLink = (node as HTMLAnchorElement).href || row.querySelector('.merge-request-title-text a, .issuable-title a')?.getAttribute('href') || '';
+            if (mrLink) {
+              const cleanUrl = mrLink.startsWith('http') ? mrLink : `${window.location.origin}${mrLink}`;
+              mrUrl = cleanUrl;
+              diffsUrl = cleanUrl.endsWith('/diffs') ? cleanUrl : `${cleanUrl.replace(/\/$/, '')}/diffs`;
+              
+              const matchMR = cleanUrl.match(/(?:https?:\/\/[^/]+)\/(.+?)\/-\/merge_requests\/(\d+)/);
+              if (matchMR) {
+                projectPath = matchMR[1];
+                mrIid = matchMR[2];
+              } else {
+                const iidMatch = cleanUrl.match(/\/merge_requests\/(\d+)/);
+                if (iidMatch) {
+                  mrIid = iidMatch[1];
+                }
+              }
+            }
+
+            // Extrair métricas de diff do GitLab (se disponível no DOM)
+            const filesEl = row.querySelector('[data-testid="files-changed"], .files-changed, .diff-stats, .issuable-mr-metrics');
+            if (filesEl) {
+              const filesText = filesEl.textContent || '';
+              const fMatch = filesText.match(/(\d+)\s*(?:files|arquivos)?/i);
+              if (fMatch) filesCount = fMatch[1];
+
+              const addMatch = filesText.match(/\+(\d+)/);
+              if (addMatch) addedLines = `+${addMatch[1]}`;
+
+              const delMatch = filesText.match(/-(\d+)/);
+              if (delMatch) deletedLines = `-${delMatch[1]}`;
+            } else {
+              const fMatch = rowText.match(/(\d+)\s+files?/i);
+              if (fMatch) filesCount = fMatch[1];
+              const addMatch = rowText.match(/\+(\d+)/);
+              if (addMatch) addedLines = `+${addMatch[1]}`;
+              const delMatch = rowText.match(/-(\d+)/);
+              if (delMatch) deletedLines = `-${delMatch[1]}`;
             }
           }
 
@@ -85,6 +134,20 @@ export default defineContentScript({
                 issueBranchesMap.set(id, new Set<string>());
               }
               issueBranchesMap.get(id)?.add(targetBranch);
+
+              if (!issueMRDetailsMap.has(id)) {
+                issueMRDetailsMap.set(id, new Map<string, MRBranchInfo>());
+              }
+              issueMRDetailsMap.get(id)?.set(targetBranch, {
+                branch: targetBranch,
+                projectPath,
+                mrIid,
+                mrUrl,
+                diffsUrl,
+                filesCount,
+                addedLines,
+                deletedLines
+              });
             }
           }
         });
@@ -221,9 +284,20 @@ export default defineContentScript({
 
             const hostElement = badgesContainer.querySelector(`.hydra-review-injected[data-issue-id="${issue.id}"]`) as any;
             const detectedBranches = Array.from(issueBranchesMap.get(issue.id) || []);
+            const branchDetails = Array.from(issueMRDetailsMap.get(issue.id)?.values() || []);
             if (hostElement && hostElement._reactRoot) {
-              const reactRoot = hostElement.shadowRoot.querySelector('div');
-              hostElement._reactRoot.render(<IssuePopover issue={issue} container={reactRoot} usersMap={usersMap} targetBranches={detectedBranches} />);
+              const reactRoot = hostElement.shadowRoot?.querySelector('div') || undefined;
+              hostElement._reactRoot.render(
+                <IssuePopover 
+                  issue={issue} 
+                  container={reactRoot} 
+                  usersMap={usersMap} 
+                  targetBranches={detectedBranches} 
+                  branchDetails={branchDetails} 
+                  gitlabUrl={config.gitlabUrl || window.location.origin}
+                  gitlabToken={config.gitlabToken || 'xs34h5P5a7xn26NU8pj2'}
+                />
+              );
             }
 
             // Injetar Prioridade (Esquerda) e Status (Direita) do título

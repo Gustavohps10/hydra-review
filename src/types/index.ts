@@ -59,3 +59,14 @@ export interface RedmineIssuesResponse {
   offset: number;
   limit: number;
 }
+
+export interface MRBranchInfo {
+  branch: string;
+  projectPath?: string;
+  mrIid?: string;
+  mrUrl?: string;
+  diffsUrl?: string;
+  filesCount?: string;
+  addedLines?: string;
+  deletedLines?: string;
+}

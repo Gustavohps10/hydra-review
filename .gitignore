@@ -6,3 +6,6 @@ dist
 .env
 .DS_Store
 68168.json
+scratch/
+test*
+*.mjs

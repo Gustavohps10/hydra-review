@@ -43,5 +43,127 @@ export const gitlabApi = {
       }
       return { success: false, message: `Falha de conexão com GitLab: ${details}` };
     }
-  }
+  },
+
+  /**
+   * Obtém as métricas de diff (arquivos alterados, adições e deleções) de um Merge Request em 1 request.
+   * Tenta primeiro via diffs_metadata.json (o mesmo endpoint interno usado pela UI do GitLab no navegador,
+   * que garante números 100% idênticos ao GitLab mesmo com +2000 diffs ou paginação).
+   * Se falhar, faz fallback para a API REST oficial (/changes).
+   * Utiliza cache em memória para evitar chamadas duplicadas.
+   */
+  getMRDiffStats: async (
+    url: string,
+    token: string,
+    projectPath: string,
+    mrIid: string,
+    mrUrl?: string
+  ): Promise<{ filesCount: string; addedLines: string; deletedLines: string } | null> => {
+    if ((!url && !mrUrl) || !projectPath || !mrIid) {
+      return null;
+    }
+
+    const cacheKey = `${projectPath}:${mrIid}`;
+    if (mrDiffCache.has(cacheKey)) {
+      return mrDiffCache.get(cacheKey)!;
+    }
+
+    const baseUrl = (url || (typeof window !== 'undefined' ? window.location?.origin : '') || '').replace(/\/$/, '');
+
+    // 1. Tentar primeiro via diffs_metadata.json (com os cookies da sessão ativa do GitLab no navegador)
+    try {
+      const cleanMrUrl = mrUrl ? mrUrl.replace(/\/diffs$/, '').replace(/\/$/, '') : `${baseUrl}/${projectPath}/-/merge_requests/${mrIid}`;
+      const metadataUrl = `${cleanMrUrl}/diffs_metadata.json`;
+
+      const metaRes = await fetch(metadataUrl, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+          ...(token ? { 'PRIVATE-TOKEN': token } : {})
+        },
+      });
+
+      if (metaRes.ok) {
+        const metaContentType = metaRes.headers.get('content-type') || '';
+        if (metaContentType.includes('application/json')) {
+          const metaData = await metaRes.json();
+          if (metaData && (metaData.diff_files || metaData.real_size)) {
+            let added = 0;
+            let deleted = 0;
+            const files = Array.isArray(metaData.diff_files) ? metaData.diff_files : [];
+            for (const file of files) {
+              if (typeof file.added_lines === 'number') added += file.added_lines;
+              if (typeof file.removed_lines === 'number') deleted += file.removed_lines;
+            }
+
+            const filesCount = String(metaData.real_size || files.length);
+            const result = {
+              filesCount,
+              addedLines: `+${added}`,
+              deletedLines: `-${deleted}`,
+            };
+
+            mrDiffCache.set(cacheKey, result);
+            return result;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[HydraReview] diffs_metadata.json falhou, usando fallback REST API:', err);
+    }
+
+    // 2. Fallback: REST API oficial (/changes)
+    try {
+      const encodedPath = encodeURIComponent(projectPath);
+      const response = await fetch(`${baseUrl}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}/changes`, {
+        method: 'GET',
+        headers: {
+          ...(token ? { 'PRIVATE-TOKEN': token } : {}),
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const filesCount = String(data.changes_count || (Array.isArray(data.changes) ? data.changes.length : 0));
+
+      let added = 0;
+      let deleted = 0;
+
+      if (Array.isArray(data.changes)) {
+        for (const change of data.changes) {
+          if (change.diff && typeof change.diff === 'string') {
+            const lines = change.diff.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('+') && !line.startsWith('+++')) {
+                added++;
+              } else if (line.startsWith('-') && !line.startsWith('---')) {
+                deleted++;
+              }
+            }
+          }
+        }
+      }
+
+      const result = {
+        filesCount,
+        addedLines: `+${added}`,
+        deletedLines: `-${deleted}`,
+      };
+
+      mrDiffCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.warn('Erro ao obter métricas de diff do MR:', error);
+      return null;
+    }
+  },
 };
+
+const mrDiffCache = new Map<string, { filesCount: string; addedLines: string; deletedLines: string }>();

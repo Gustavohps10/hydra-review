@@ -1,7 +1,8 @@
 import React from 'react';
-import type { RedmineIssue } from '@/types';
+import type { RedmineIssue, MRBranchInfo } from '@/types';
 import { getPriorityConfig, getStatusConfig, getTrackerConfig } from '@/utils/redmine-metadata';
-import { Users, Clock, AlertCircle, User, ShieldAlert, Bookmark, CheckCircle2, AlertTriangle, Minus, GitBranch } from 'lucide-react';
+import { gitlabApi } from '@/services/api/gitlab';
+import { Users, Clock, AlertCircle, User, ShieldAlert, Bookmark, CheckCircle2, AlertTriangle, Minus, GitBranch, FileCode } from 'lucide-react';
 import {
   HoverCard,
   HoverCardContent,
@@ -35,11 +36,79 @@ export function ErrorBadge() {
   );
 }
 
+function BranchDiffSummary({
+  mrInfo,
+  gitlabUrl,
+  gitlabToken,
+}: {
+  mrInfo: MRBranchInfo;
+  gitlabUrl?: string;
+  gitlabToken?: string;
+}) {
+  const [stats, setStats] = React.useState<{
+    filesCount?: string;
+    addedLines?: string;
+    deletedLines?: string;
+  } | null>(() => {
+    if (mrInfo.filesCount && mrInfo.addedLines) {
+      return {
+        filesCount: mrInfo.filesCount,
+        addedLines: mrInfo.addedLines,
+        deletedLines: mrInfo.deletedLines,
+      };
+    }
+    return null;
+  });
+
+  React.useEffect(() => {
+    if (stats?.filesCount) return;
+
+    if (mrInfo.projectPath && mrInfo.mrIid) {
+      const gUrl = gitlabUrl || window.location.origin;
+      const gToken = gitlabToken || 'xs34h5P5a7xn26NU8pj2';
+      gitlabApi.getMRDiffStats(gUrl, gToken, mrInfo.projectPath, mrInfo.mrIid, mrInfo.mrUrl).then((res) => {
+        if (res) {
+          setStats(res);
+        }
+      });
+    }
+  }, [mrInfo.projectPath, mrInfo.mrIid, mrInfo.mrUrl, gitlabUrl, gitlabToken]);
+
+  const href = mrInfo.diffsUrl || mrInfo.mrUrl || '#';
+  const filesCount = stats?.filesCount || mrInfo.filesCount;
+  const addedLines = stats?.addedLines || mrInfo.addedLines;
+  const deletedLines = stats?.deletedLines || mrInfo.deletedLines;
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="flex flex-col items-start text-muted-foreground hover:text-foreground hover:underline transition-colors py-0.5 mt-0.5 px-1"
+      title="Abrir alterações deste MR (/diffs)"
+    >
+      <div className="flex items-center gap-1 text-[9.5px] font-mono leading-tight">
+        <FileCode className="w-2.5 h-2.5 shrink-0 opacity-70" />
+        <span>{filesCount ? `${filesCount} files` : (mrInfo.mrIid ? `!${mrInfo.mrIid}` : 'diffs')}</span>
+      </div>
+      {(addedLines || deletedLines) && (
+        <div className="flex items-center gap-1 text-[9px] font-mono font-bold leading-tight mt-0.5">
+          {addedLines && <span className="text-emerald-500">{addedLines}</span>}
+          {deletedLines && <span className="text-rose-500">{deletedLines}</span>}
+        </div>
+      )}
+    </a>
+  );
+}
+
 interface IssuePopoverProps {
   issue: RedmineIssue;
   container?: HTMLElement;
   usersMap?: Record<string, string>;
   targetBranches?: string[];
+  branchDetails?: MRBranchInfo[];
+  gitlabUrl?: string;
+  gitlabToken?: string;
 }
 
 
@@ -69,7 +138,7 @@ export function PriorityBadge({ issue }: { issue: RedmineIssue }) {
   );
 }
 
-export function IssuePopover({ issue, container, usersMap = {}, targetBranches = [] }: IssuePopoverProps) {
+export function IssuePopover({ issue, container, usersMap = {}, targetBranches = [], branchDetails = [], gitlabUrl, gitlabToken }: IssuePopoverProps) {
   const priority = getPriorityConfig(issue.priority.id, issue.priority.name);
   const status = getStatusConfig(issue.status.id, issue.status.name);
   const tracker = getTrackerConfig(issue.tracker.id);
@@ -96,10 +165,14 @@ export function IssuePopover({ issue, container, usersMap = {}, targetBranches =
     : (issue.fixed_version?.name || '');
 
   const targetLower = (targetBranches || []).map(b => b.toLowerCase());
-  const hasDevelop = targetLower.some(b => b.includes('develop'));
-  const hasRelease = targetLower.some(b => b.includes('release'));
-  const hasMaster = targetLower.some(b => b.includes('master') || b.includes('main'));
+  const hasDevelop = targetLower.some(b => b.includes('develop')) || branchDetails.some(b => b.branch.toLowerCase().includes('develop'));
+  const hasRelease = targetLower.some(b => b.includes('release')) || branchDetails.some(b => b.branch.toLowerCase().includes('release'));
+  const hasMaster = targetLower.some(b => b.includes('master') || b.includes('main')) || branchDetails.some(b => b.branch.toLowerCase().includes('master') || b.branch.toLowerCase().includes('main'));
   
+  const developMR = branchDetails.find(b => b.branch.toLowerCase().includes('develop'));
+  const releaseMR = branchDetails.find(b => b.branch.toLowerCase().includes('release'));
+  const masterMR = branchDetails.find(b => b.branch.toLowerCase().includes('master') || b.branch.toLowerCase().includes('main'));
+
   // Se no Redmine está explicitamente definido "Branch: Release" e não temos MR de release
   const redmineDemandsRelease = redmineBranch.includes('release');
   return (
@@ -233,58 +306,73 @@ export function IssuePopover({ issue, container, usersMap = {}, targetBranches =
 
             <div className="grid grid-cols-3 gap-1.5 pt-0.5">
               {/* Develop */}
-              <div 
-                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
-                  hasDevelop 
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                    : (hasMaster || hasRelease)
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                    : 'bg-muted/40 text-muted-foreground border-transparent'
-                }`}
-              >
-                <span>develop</span>
-                {hasDevelop ? (
-                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                ) : (hasMaster || hasRelease) ? (
-                  <AlertTriangle className="w-3 h-3 text-amber-500" />
-                ) : (
-                  <Minus className="w-3 h-3 opacity-40" />
+              <div className="flex flex-col">
+                <div 
+                  className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                    hasDevelop 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                      : (hasMaster || hasRelease)
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-muted/40 text-muted-foreground border-transparent'
+                  }`}
+                >
+                  <span>develop</span>
+                  {hasDevelop ? (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  ) : (hasMaster || hasRelease) ? (
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  ) : (
+                    <Minus className="w-3 h-3 opacity-40" />
+                  )}
+                </div>
+                {hasDevelop && developMR && (
+                  <BranchDiffSummary mrInfo={developMR} gitlabUrl={gitlabUrl} gitlabToken={gitlabToken} />
                 )}
               </div>
 
               {/* Release */}
-              <div 
-                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
-                  hasRelease 
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                    : redmineDemandsRelease
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                    : 'bg-muted/40 text-muted-foreground border-transparent'
-                }`}
-              >
-                <span>release</span>
-                {hasRelease ? (
-                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                ) : redmineDemandsRelease ? (
-                  <AlertTriangle className="w-3 h-3 text-amber-500" />
-                ) : (
-                  <Minus className="w-3 h-3 opacity-40" />
+              <div className="flex flex-col">
+                <div 
+                  className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                    hasRelease 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                      : redmineDemandsRelease
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                      : 'bg-muted/40 text-muted-foreground border-transparent'
+                  }`}
+                >
+                  <span>release</span>
+                  {hasRelease ? (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  ) : redmineDemandsRelease ? (
+                    <AlertTriangle className="w-3 h-3 text-amber-500" />
+                  ) : (
+                    <Minus className="w-3 h-3 opacity-40" />
+                  )}
+                </div>
+                {hasRelease && releaseMR && (
+                  <BranchDiffSummary mrInfo={releaseMR} gitlabUrl={gitlabUrl} gitlabToken={gitlabToken} />
                 )}
               </div>
 
               {/* Master */}
-              <div 
-                className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
-                  hasMaster 
-                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                    : 'bg-muted/40 text-muted-foreground border-transparent'
-                }`}
-              >
-                <span>master</span>
-                {hasMaster ? (
-                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                ) : (
-                  <Minus className="w-3 h-3 opacity-40" />
+              <div className="flex flex-col">
+                <div 
+                  className={`flex items-center justify-between px-2 py-1 rounded text-[10px] font-medium border ${
+                    hasMaster 
+                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
+                      : 'bg-muted/40 text-muted-foreground border-transparent'
+                  }`}
+                >
+                  <span>master</span>
+                  {hasMaster ? (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  ) : (
+                    <Minus className="w-3 h-3 opacity-40" />
+                  )}
+                </div>
+                {hasMaster && masterMR && (
+                  <BranchDiffSummary mrInfo={masterMR} gitlabUrl={gitlabUrl} gitlabToken={gitlabToken} />
                 )}
               </div>
             </div>
