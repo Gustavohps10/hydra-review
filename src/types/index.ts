@@ -30,3 +30,31 @@ export interface GitLabUserResponse {
   state: string;
   locked: boolean;
 }
+
+export interface RedmineIssue {
+  id: number;
+  project: { id: number; name: string };
+  tracker: { id: number; name: string };
+  status: { id: number; name: string };
+  priority: { id: number; name: string };
+  author: { id: number; name: string };
+  assigned_to?: { id: number; name: string };
+  subject: string;
+  description: string;
+  done_ratio: number;
+  created_on: string;
+  updated_on: string;
+  custom_fields?: Array<{
+    id: number;
+    name: string;
+    value: string | string[];
+    multiple?: boolean;
+  }>;
+}
+
+export interface RedmineIssuesResponse {
+  issues: RedmineIssue[];
+  total_count: number;
+  offset: number;
+  limit: number;
+}

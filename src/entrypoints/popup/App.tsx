@@ -24,7 +24,7 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-type ViewState = 'loading' | 'form' | 'dashboard';
+type ViewState = 'loading' | 'form' | 'dashboard' | 'logs';
 
 export default function App() {
   const [view, setView] = useState<ViewState>('loading');
@@ -32,6 +32,13 @@ export default function App() {
   
   const [redmineUser, setRedmineUser] = useState<RedmineUserResponse['user'] | null>(null);
   const [gitlabUser, setGitlabUser] = useState<GitLabUserResponse | null>(null);
+  const [logs, setLogs] = useState<any[]>([]);
+
+  const loadLogs = async () => {
+    const { loggerService } = await import('@/services/logger');
+    const allLogs = await loggerService.getLogs();
+    setLogs(allLogs.reverse()); // Mais recentes primeiro
+  };
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -218,7 +225,7 @@ export default function App() {
               </Button>
             </CardFooter>
           </>
-        ) : (
+        ) : view === 'dashboard' ? (
           <>
             <CardHeader className="shrink-0 pb-4 border-b">
               <div className="flex items-center gap-2">
@@ -320,8 +327,59 @@ export default function App() {
                 Retestar
               </Button>
             </CardFooter>
+            <div className="p-3 border-t bg-muted/20 text-center">
+              <Button variant="link" size="sm" className="text-xs text-muted-foreground" onClick={() => {
+                loadLogs();
+                setView('logs');
+              }}>
+                Ver Logs do Content Script
+              </Button>
+            </div>
           </>
-        )}
+        ) : view === 'logs' ? (
+          <>
+            <CardHeader className="shrink-0 pb-4 border-b">
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-primary" />
+                <CardTitle>System Logs</CardTitle>
+              </div>
+              <CardDescription>Logs de execução do Content Script no GitLab.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 overflow-y-auto px-0 py-0 custom-scrollbar bg-black/5">
+              {logs.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">Nenhum log registrado ainda. Acesse uma página do GitLab.</div>
+              ) : (
+                <div className="divide-y divide-border/50">
+                  {logs.map((log, i) => (
+                    <div key={i} className="p-3 text-xs font-mono space-y-1">
+                      <div className="flex items-center justify-between opacity-70">
+                        <span>{new Date(log.timestamp).toLocaleTimeString()} - {log.source}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] uppercase font-bold ${
+                          log.level === 'error' ? 'bg-red-500/20 text-red-500' : 
+                          log.level === 'warn' ? 'bg-amber-500/20 text-amber-500' : 
+                          'bg-blue-500/20 text-blue-500'
+                        }`}>{log.level}</span>
+                      </div>
+                      <div className="break-words whitespace-pre-wrap">{log.message}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+            <CardFooter className="shrink-0 p-6 pt-4 border-t bg-card flex gap-3">
+              <Button variant="outline" className="flex-1" onClick={() => setView('dashboard')}>
+                Voltar
+              </Button>
+              <Button variant="destructive" className="flex-1" onClick={async () => {
+                const { loggerService } = await import('@/services/logger');
+                await loggerService.clearLogs();
+                setLogs([]);
+              }}>
+                Limpar Logs
+              </Button>
+            </CardFooter>
+          </>
+        ) : null}
       </Card>
     </div>
   );

@@ -12,6 +12,12 @@ export default defineConfig({
     host_permissions: [
       "http://*/*",
       "https://*/*"
+    ],
+    content_scripts: [
+      {
+        matches: ["*://gitlab.com/*", "*://gitlab2.atakone.com.br/*"],
+        js: ["content-scripts/gitlab.js"]
+      }
     ]
   },
   runner: {

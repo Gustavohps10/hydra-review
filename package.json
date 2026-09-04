@@ -5,6 +5,7 @@
   "description": "Hydra Review Chrome Extension",
   "type": "module",
   "scripts": {
+    "predev": "node -e \"require('fs').mkdirSync('./.wxt/chrome-profile', { recursive: true })\"",
     "dev": "wxt",
     "build": "wxt build",
     "zip": "wxt zip",
@@ -12,6 +13,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@radix-ui/react-hover-card": "^1.1.23",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-slot": "^1.0.2",
     "clsx": "^2.1.1",
