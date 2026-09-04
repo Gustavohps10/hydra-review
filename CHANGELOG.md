@@ -1,5 +1,11 @@
 # hydra-review
 
+## 0.3.1
+
+### Patch Changes
+
+- 1897768: Release v0.3.1 com correções no fluxo de release e empacotamento da extensão.
+
 ## 0.3.0
 
 ### Minor Changes
