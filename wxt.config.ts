@@ -1,5 +1,6 @@
 import { defineConfig } from 'wxt';
 import tailwindcss from '@tailwindcss/vite';
+import pkg from './package.json';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
@@ -7,7 +8,7 @@ export default defineConfig({
   manifest: {
     name: 'Hydra Review',
     description: 'Enriquece o code review com GitLab e Redmine',
-    version: '0.1.0',
+    version: pkg.version,
     permissions: ['storage', 'history', 'tabs'],
     host_permissions: [
       "http://*/*",

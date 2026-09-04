@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { storageService } from '@/services/storage';
 import { redmineApi } from '@/services/api/redmine';
 import { gitlabApi } from '@/services/api/gitlab';
-import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut } from 'lucide-react';
+import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut, RotateCw, FileText } from 'lucide-react';
 
 // Shadcn UI
 import { Button } from '@/components/ui/button';
@@ -296,45 +296,54 @@ export default function App() {
               )}
             </CardContent>
             
-            <CardFooter className="shrink-0 p-6 pt-4 border-t bg-card flex gap-3">
-              <Button 
-                variant="ghost" 
-                className="flex-1"
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setStatus({ type: 'idle', message: '' });
-                  setView('form');
-                }}
-              >
-                <Settings className="w-4 h-4 mr-2" />
-                Alterar Config
-              </Button>
-              <Button 
-                variant="secondary" 
-                className="flex-1"
-                type="button"
-                onClick={async (e) => {
-                  e.preventDefault();
-                  setStatus({ type: 'idle', message: '' });
-                  setView('loading');
-                  await validateSavedConfig(form.getValues());
-                  setStatus({ type: 'success', message: 'Conexões testadas e ativas!' });
-                  setTimeout(() => setStatus({ type: 'idle', message: '' }), 3000);
-                }}
-              >
-                <Loader2 className="w-4 h-4 mr-2" />
-                Retestar
-              </Button>
+            <CardFooter className="shrink-0 p-4 border-t bg-card flex flex-col gap-2">
+              <div className="flex items-center gap-2 w-full">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setStatus({ type: 'idle', message: '' });
+                    setView('form');
+                  }}
+                >
+                  <Settings className="w-3.5 h-3.5 mr-1.5" />
+                  Alterar Config
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={async (e) => {
+                    e.preventDefault();
+                    setStatus({ type: 'idle', message: '' });
+                    setView('loading');
+                    await validateSavedConfig(form.getValues());
+                    setStatus({ type: 'success', message: 'Conexões testadas e ativas!' });
+                    setTimeout(() => setStatus({ type: 'idle', message: '' }), 3000);
+                  }}
+                >
+                  <RotateCw className="w-3.5 h-3.5 mr-1.5" />
+                  Retestar
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={() => {
+                    loadLogs();
+                    setView('logs');
+                  }}
+                >
+                  <FileText className="w-3.5 h-3.5 mr-1.5" />
+                  Ver Logs
+                </Button>
+              </div>
             </CardFooter>
-            <div className="p-3 border-t bg-muted/20 text-center">
-              <Button variant="link" size="sm" className="text-xs text-muted-foreground" onClick={() => {
-                loadLogs();
-                setView('logs');
-              }}>
-                Ver Logs do Content Script
-              </Button>
-            </div>
           </>
         ) : view === 'logs' ? (
           <>

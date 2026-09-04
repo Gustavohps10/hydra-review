@@ -45,11 +45,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Extension Zip to GitHub Release
+      - name: Create GitHub Release and Upload Extension Zip
         if: steps.changesets.outputs.published == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.changesets.outputs.publishedPackages[0].version }}
+          name: v${{ steps.changesets.outputs.publishedPackages[0].version }}
           files: .output/*.zip
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
