@@ -167,11 +167,19 @@ export default function App() {
         {view === 'form' ? (
           <>
             <CardHeader className="shrink-0 pb-4 border-b">
-              <div className="flex items-center gap-2">
-                <Settings className="w-5 h-5 text-primary" />
-                <CardTitle>Hydra Review</CardTitle>
+              <div className="flex items-center gap-3 pr-10">
+                <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full border">
+                      <Settings className="w-3 h-3" />
+                      Configurações
+                    </span>
+                  </div>
+                  <CardDescription className="text-xs mt-0.5">Configure suas credenciais de acesso.</CardDescription>
+                </div>
               </div>
-              <CardDescription>Configure suas credenciais de acesso.</CardDescription>
             </CardHeader>
             
             <CardContent className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
@@ -218,21 +226,40 @@ export default function App() {
               </form>
             </CardContent>
             
-            <CardFooter className="shrink-0 p-6 pt-4 border-t bg-card">
-              <Button type="submit" form="config-form" className="w-full">
+            <CardFooter className="shrink-0 p-4 border-t bg-card flex gap-2">
+              {redmineUser && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-xs" 
+                  type="button" 
+                  onClick={() => setView('dashboard')}
+                >
+                  Cancelar
+                </Button>
+              )}
+              <Button type="submit" form="config-form" variant="outline" className="flex-1">
                 <Save className="w-4 h-4 mr-2" />
-                Conectar
+                Salvar Configurações
               </Button>
             </CardFooter>
           </>
         ) : view === 'dashboard' ? (
           <>
             <CardHeader className="shrink-0 pb-4 border-b">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                <CardTitle>Conectado</CardTitle>
+              <div className="flex items-center gap-3 pr-10">
+                <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      Conectado
+                    </span>
+                  </div>
+                  <CardDescription className="text-xs mt-0.5">Integrações ativas e autenticadas.</CardDescription>
+                </div>
               </div>
-              <CardDescription>Integrações ativas e autenticadas.</CardDescription>
             </CardHeader>
             
             <CardContent className="flex-1 overflow-y-auto px-6 py-4 space-y-6 custom-scrollbar">
@@ -327,7 +354,7 @@ export default function App() {
                   }}
                 >
                   <RotateCw className="w-3.5 h-3.5 mr-1.5" />
-                  Retestar
+                  Reconectar
                 </Button>
                 <Button 
                   variant="secondary" 
@@ -348,11 +375,19 @@ export default function App() {
         ) : view === 'logs' ? (
           <>
             <CardHeader className="shrink-0 pb-4 border-b">
-              <div className="flex items-center gap-2">
-                <Info className="w-5 h-5 text-primary" />
-                <CardTitle>System Logs</CardTitle>
+              <div className="flex items-center gap-3 pr-10">
+                <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full border">
+                      <FileText className="w-3 h-3" />
+                      Logs
+                    </span>
+                  </div>
+                  <CardDescription className="text-xs mt-0.5">Logs de execução do Content Script no GitLab.</CardDescription>
+                </div>
               </div>
-              <CardDescription>Logs de execução do Content Script no GitLab.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 overflow-y-auto px-0 py-0 custom-scrollbar bg-black/5">
               {logs.length === 0 ? (

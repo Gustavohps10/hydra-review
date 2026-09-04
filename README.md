@@ -1,40 +1,54 @@
-# Hydra Review
+<h2 align="center">
+  <div align="center">
+    <img height="100" src="./src/assets/logo.png" alt="Hydra Review Logo" />
+  </div>
 
-O **Hydra Review** é uma extensão de navegador poderosa e não obstrusiva projetada para enriquecer a experiência de Code Review no GitLab. Ele identifica automaticamente IDs de tarefas do Redmine presentes nos títulos dos Merge Requests (MRs) e injeta informações valiosas diretamente na interface do GitLab, sem poluir a visão do desenvolvedor.
+  Extensão inteligente para produtividade e visibilidade de Merge Requests e tarefas no GitLab.
 
-## 🚀 Funcionalidades
+</h2>
 
-- **Identificação Automática:** Lê o título dos MRs (ex: `#76874`, `bug-76874`) e vincula à tarefa correspondente no Redmine.
-- **Injeção de Metadados UI:** Exibe Status, Prioridade, Tracker (Bug, Funcionalidade, etc) e os Desenvolvedores responsáveis pela revisão.
-- **Design Adaptativo e Limpo:** Suporta nativamente Dark/Light mode do GitLab usando Shadow DOM para isolar os estilos (Tailwind CSS) e não quebrar o layout da página original.
-- **Alta Performance:** Executa a varredura da página em tempo `O(1)` no DOM e agrupa chamadas de rede para não sobrecarregar as APIs.
-- **Tratamento de Permissões:** Identifica tarefas que o usuário não tem acesso (Erro 403) e exibe um alerta de forma controlada em vez de falhar de forma silenciosa.
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.4.1-blue.svg?style=flat-square" alt="Version 0.4.1" />
+  <img src="https://img.shields.io/badge/TypeScript-007acc?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/platform-Chrome%20Extension-success.svg?style=flat-square" alt="Chrome Extension" />
+  <img src="https://img.shields.io/badge/built%20with-WXT%20%7C%20React%20%7C%20Tailwind-blueviolet.svg?style=flat-square" alt="Tech Stack" />
+</p>
 
-## 🛠️ Tecnologias Utilizadas
+---
 
-- **WXT Framework:** Framework moderno para desenvolvimento de extensões.
-- **React 18:** Para componentização das tooltips e badges (via `createRoot`).
-- **Tailwind CSS + Shadcn UI:** Para estilo unificado e primitivas acessíveis de hover-cards.
-- **TypeScript:** Garantindo tipagem estrita para dados de integração do GitLab e Redmine.
+## 🎯 O que é o Hydra Review?
 
-## 📦 Como rodar localmente (Dev)
+O **Hydra Review** é uma extensão Chrome criada para acelerar a rotina de desenvolvimento e code review no GitLab. Ela conecta automaticamente os Merge Requests (MRs) às tarefas do Redmine e disponibiliza visibilidade imediata das branches e diffs sem fricção.
 
-1. Clone e instale as dependências:
-   ```bash
-   npm install
-   ```
-2. Para modo desenvolvimento (Hot Reload):
-   ```bash
-   npm run dev
-   ```
-3. Para build de produção:
-   ```bash
-   npm run build
-   ```
-4. No Chrome, acesse `chrome://extensions/`, ative o "Modo do desenvolvedor" e clique em "Carregar sem compactação", selecionando a pasta `.output/chrome-mv3`.
+## 🚀 Principais Recursos
 
-## 📚 Documentação e Decisões
+- **Vínculo Automático com Redmine:** Detecta IDs de tarefas em títulos ou branches de MRs (`#12345`, `feature/12345`) e exibe status, prioridade, autor e revisores em hover cards elegantes.
+- **Rastreador de Branches & Diffs:** Exibe o status de cada branch de destino (`develop`, `release`, `master`) com badges diretos e métricas exatas de alterações (`X files`, `+Y -Z`) com link direto para a tela de diffs.
+- **Isolamento Completo (Shadow DOM):** Interface moderna com Tailwind CSS e Shadcn UI injetada sem interferir nos estilos nativos do GitLab.
+- **Suporte a Dark & Light Mode:** Cores e tipografia adaptadas harmonicamente ao tema do GitLab e da extensão.
+- **Dashboard de Conexão Rápida:** Popup intuitivo para testar credenciais, reconectar serviços e inspecionar logs de execução em tempo real.
 
-Para entender a fundo o motivo das nossas escolhas arquiteturais e de design ao longo do projeto, consulte a pasta `/docs`:
-- [Arquitetura e Performance](./docs/01-arquitetura-e-performance.md)
-- [Design e UI/UX](./docs/02-decisoes-de-ui-ux.md)
+## 📦 Instalação
+
+1. Baixe o pacote `.zip` da versão mais recente na aba de [Releases](https://github.com/Gustavohps10/hydra-review/releases).
+2. Extraia o conteúdo em uma pasta no seu computador.
+3. No Google Chrome, acesse `chrome://extensions/`.
+4. Ative a chave **"Modo do desenvolvedor"** no canto superior direito.
+5. Clique em **"Carregar sem compactação"** e selecione a pasta descompactada.
+6. Abra o popup da extensão para configurar as URLs e tokens de acesso do GitLab e Redmine.
+
+## 🛠️ Desenvolvimento Local
+
+```bash
+# Instalar dependências
+npm install
+
+# Modo desenvolvimento (com hot-reload)
+npm run dev
+
+# Gerar build de produção
+npm run build
+
+# Gerar pacote zip para distribuição
+npm run zip
+```

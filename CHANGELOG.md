@@ -1,5 +1,19 @@
 # hydra-review
 
+## 0.4.1
+
+### Patch Changes
+
+- **Identidade Visual & Ícones do Addon**:
+  - Adicionado conjunto completo de ícones oficiais (`16x16`, `32x32`, `48x48`, `128x128`) configurados no manifest para exibição nativa no Chrome e barra de extensões.
+  - Novo cabeçalho visual no popup com o logo oficial elegante, título e status de conexão.
+- **Aprimoramentos de UI no Popup**:
+  - Botão de reconectar renomeado para `"Reconectar"` (com ícone rotativo).
+  - Botões de configuração com variante `outline` preservada para hierarquia visual limpa.
+  - Cabeçalho padronizado e alinhado entre todas as telas (Configuração, Dashboard e Logs).
+- **Documentação Renovada**:
+  - `README.md` reestruturado com topo elegante, logo centralizado, badges de tecnologia e visão objetiva sem excessos técnicos.
+
 ## 0.4.0
 
 ### Minor Changes
