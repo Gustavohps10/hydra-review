@@ -49,8 +49,8 @@ async function build(): Promise<void> {
     stdio: 'inherit',
   });
 
-  // 3. Copiar base node.exe para o arquivo de destino
-  console.log(`📄 Passo 3/4: Copiando runtime Node para ${path.basename(TARGET_EXE)}...`);
+  // 3. Preparar base node.exe para o arquivo de destino
+  console.log(`📄 Passo 3/4: Preparando runtime Node para ${path.basename(TARGET_EXE)}...`);
   if (fs.existsSync(TARGET_EXE)) {
     try {
       fs.unlinkSync(TARGET_EXE);
@@ -62,7 +62,20 @@ async function build(): Promise<void> {
       } catch {}
     }
   }
-  fs.copyFileSync(process.execPath, TARGET_EXE);
+
+  if (process.platform === 'win32') {
+    fs.copyFileSync(process.execPath, TARGET_EXE);
+  } else {
+    // No Linux/CI, baixa a base Windows oficial para injeção cross-platform com postject
+    const winUrl = `https://nodejs.org/dist/${process.version}/win-x64/node.exe`;
+    console.log(`🌐 Baixando base Windows node.exe (${process.version}) para compilação cross-platform...`);
+    const res = await fetch(winUrl);
+    if (!res.ok) {
+      throw new Error(`Falha ao baixar ${winUrl}: HTTP ${res.status}`);
+    }
+    const buf = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(TARGET_EXE, buf);
+  }
 
   // 4. Injetar o blob no executável usando postject
   console.log('💉 Passo 4/4: Injetando recursos no executável com postject...');
