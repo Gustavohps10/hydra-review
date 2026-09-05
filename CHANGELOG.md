@@ -1,5 +1,14 @@
 # hydra-review
 
+## 0.5.1
+
+### Patch Changes
+
+- **CI/CD e Releases Automáticas**:
+  - Compilação cross-platform do executável Windows (`hydra-review-mcp.exe`) em runners Linux (Ubuntu) no GitHub Actions via Node SEA e `postject`.
+  - Inclusão automática do `.exe` junto do `.zip` nos assets das releases do GitHub.
+  - Correção na extração e renderização das notas de release (changelog) no corpo da publicação.
+
 ## 0.5.0
 
 ### Minor Changes
