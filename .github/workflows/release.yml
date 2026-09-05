@@ -10,7 +10,10 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 jobs:
   release:
     name: Release
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     permissions:
       contents: write
       pull-requests: write
@@ -60,13 +63,13 @@ jobs:
             echo "version=$VERSION" >> $GITHUB_OUTPUT
           fi
 
-      - name: Build and Package Extension ZIP
+      - name: Build Extension ZIP and MCP Server EXE
         if: steps.release_check.outputs.should_release == 'true'
         run: |
-          npm run zip
+          npm run release
           npx tsx scripts/extract-release-notes.ts
 
-      - name: Create GitHub Release and Upload Extension Zip
+      - name: Create GitHub Release and Upload Assets
         if: steps.release_check.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
@@ -75,6 +78,7 @@ jobs:
           body_path: RELEASE_NOTES.md
           files: |
             .output/*.zip
+            .output/*.exe
           generate_release_notes: false
           draft: false
           prerelease: false
