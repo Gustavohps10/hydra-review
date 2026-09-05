@@ -1,24 +1,27 @@
 {
   "name": "hydra-review",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "private": true,
   "description": "Hydra Review Chrome Extension",
   "type": "module",
   "scripts": {
-    "predev": "node -e \"require('fs').mkdirSync('./.wxt/chrome-profile', { recursive: true })\"",
-    "dev": "wxt",
+    "predev": "tsx ./scripts/setup-mcp.ts && node -e \"require('fs').mkdirSync('./.wxt/chrome-profile', { recursive: true })\"",
+    "dev": "tsx ./scripts/dev.ts",
     "build": "wxt build",
     "zip": "wxt zip",
     "compile": "tsc --noEmit",
+    "setup:mcp": "tsx ./scripts/setup-mcp.ts",
+    "build:mcp": "tsx ./scripts/build-mcp-exe.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "npm run zip"
+    "release": "npm run zip && npm run build:mcp"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
     "@radix-ui/react-hover-card": "^1.1.23",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-slot": "^1.0.2",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.40.0",
     "react": "^19.0.0",
@@ -34,6 +37,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "tailwindcss": "^4.0.0",
+    "tsx": "^4.23.13",
     "typescript": "^5.4.5",
     "wxt": "^0.18.0"
   }

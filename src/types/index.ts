@@ -3,6 +3,7 @@ export interface HydraConfig {
   redmineApiKey: string;
   gitlabUrl: string;
   gitlabToken: string;
+  mcpServerUrl?: string;
 }
 
 export interface ValidationResult<T = any> {
@@ -70,3 +71,12 @@ export interface MRBranchInfo {
   addedLines?: string;
   deletedLines?: string;
 }
+
+export interface ReviewSkill {
+  id: string;
+  name: string;
+  prompt: string;
+  description?: string;
+  isDefault?: boolean;
+}
+

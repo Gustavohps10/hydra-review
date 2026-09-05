@@ -3,9 +3,12 @@ node_modules
 .wxt
 dist
 *.log
+RELEASE_NOTES.md
 .env
 .DS_Store
 68168.json
 scratch/
 test*
-*.mjs
+/*.mjs
+!mcp/**
+!scripts/**

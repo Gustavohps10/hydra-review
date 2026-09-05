@@ -164,6 +164,103 @@ export const gitlabApi = {
       return null;
     }
   },
+
+  /**
+   * Baixa o diff unificado de um Merge Request utilizando a API REST oficial (/changes).
+   */
+  getMRRawDiff: async (mrUrl: string, token?: string): Promise<string | null> => {
+    try {
+      // 1. Tenta extrair projectPath e mrIid da URL para usar a API oficial /changes
+      const match = mrUrl.match(/(?:https?:\/\/[^/]+)\/(.+?)\/-\/merge_requests\/(\d+)/);
+      if (match) {
+        const projectPath = match[1];
+        const mrIid = match[2];
+        const baseUrl = mrUrl.split('/-/')[0].split('/').slice(0, 3).join('/');
+        const encodedPath = encodeURIComponent(projectPath);
+        const apiUrl = `${baseUrl}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}/changes`;
+
+        const headers: Record<string, string> = {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        };
+        if (token) {
+          headers['PRIVATE-TOKEN'] = token;
+        }
+
+        const res = await fetch(apiUrl, {
+          method: 'GET',
+          headers,
+          credentials: 'include',
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.changes) && data.changes.length > 0) {
+            let fullDiff = '';
+            for (const c of data.changes) {
+              fullDiff += `diff --git a/${c.old_path} b/${c.new_path}\n`;
+              if (c.new_file) fullDiff += `new file mode 100644\n`;
+              if (c.deleted_file) fullDiff += `deleted file mode 100644\n`;
+              fullDiff += `--- a/${c.old_path}\n+++ b/${c.new_path}\n`;
+              fullDiff += (c.diff || '') + '\n\n';
+            }
+            return fullDiff.trim();
+          }
+        }
+      }
+
+      // 2. Fallback: rota .diff direta (com validação anti-HTML de tela de login)
+      const cleanUrl = mrUrl.replace(/\/diffs\/?$/, '').replace(/\/$/, '');
+      const diffUrl = `${cleanUrl}.diff`;
+      const fallbackHeaders: Record<string, string> = {};
+      if (token) {
+        fallbackHeaders['PRIVATE-TOKEN'] = token;
+      }
+      const response = await fetch(diffUrl, {
+        method: 'GET',
+        headers: fallbackHeaders,
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('text/html')) {
+          return null; // Ignora redirecionamento para tela de login
+        }
+        return await response.text();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Busca todos os Merge Requests vinculados ao ID da tarefa em todos os repositórios do GitLab
+   */
+  searchMRsByIssue: async (baseUrl: string, token: string, issueId: number): Promise<any[]> => {
+    try {
+      const cleanUrl = (baseUrl || 'http://gitlab2.atakone.com.br').replace(/\/$/, '');
+      const url = `${cleanUrl}/api/v4/merge_requests?search=${issueId}&scope=all&per_page=50`;
+      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      if (token) {
+        headers['PRIVATE-TOKEN'] = token;
+      }
+
+      const res = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  },
 };
 
 const mrDiffCache = new Map<string, { filesCount: string; addedLines: string; deletedLines: string }>();

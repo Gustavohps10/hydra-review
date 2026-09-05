@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { storageService } from '@/services/storage';
 import { redmineApi } from '@/services/api/redmine';
 import { gitlabApi } from '@/services/api/gitlab';
-import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut, RotateCw, FileText } from 'lucide-react';
+import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut, RotateCw, FileText, Trash2, FolderArchive, Copy, Check } from 'lucide-react';
 
 // Shadcn UI
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ const formSchema = z.object({
   redmineApiKey: z.string().or(z.literal('')),
   gitlabUrl: z.string().url("A URL do GitLab deve ser válida.").or(z.literal('')),
   gitlabToken: z.string().or(z.literal('')),
+  mcpServerUrl: z.string().url("A URL do MCP Server deve ser válida.").or(z.literal('')).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -34,15 +35,51 @@ export default function App() {
   const [gitlabUser, setGitlabUser] = useState<GitLabUserResponse | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
 
+  const [cacheStats, setCacheStats] = useState<{
+    running: boolean;
+    serverUrl?: string;
+    taskCount?: number;
+    totalFiles?: number;
+    totalBytes?: number;
+  } | null>(null);
+  const [isClearingCache, setIsClearingCache] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState(false);
+
   const loadLogs = async () => {
     const { loggerService } = await import('@/services/logger');
     const allLogs = await loggerService.getLogs();
     setLogs(allLogs.reverse()); // Mais recentes primeiro
   };
 
+  const loadCacheStats = async () => {
+    const config = await storageService.getConfig();
+    chrome.runtime.sendMessage({ type: 'GET_MCP_STATUS', payload: { mcpServerUrl: config.mcpServerUrl } }, (res) => {
+      if (res?.success && res?.data) {
+        setCacheStats(res.data);
+      } else {
+        setCacheStats({ running: false, serverUrl: res?.data?.serverUrl || config.mcpServerUrl || 'http://127.0.0.1:47106' });
+      }
+    });
+  };
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    const config = await storageService.getConfig();
+    chrome.runtime.sendMessage({ type: 'CLEAR_MCP_CACHE', payload: { mcpServerUrl: config.mcpServerUrl } }, async (res) => {
+      setIsClearingCache(false);
+      if (res?.success) {
+        await loadCacheStats();
+        setStatus({ type: 'success', message: 'Cache de arquivos temporários limpo!' });
+        setTimeout(() => setStatus({ type: 'idle', message: '' }), 3000);
+      } else {
+        setStatus({ type: 'error', message: res?.message || 'Falha ao conectar ao servidor MCP.' });
+      }
+    });
+  };
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { redmineUrl: '', redmineApiKey: '', gitlabUrl: '', gitlabToken: '' },
+    defaultValues: { redmineUrl: '', redmineApiKey: '', gitlabUrl: '', gitlabToken: '', mcpServerUrl: '' },
   });
 
   const validateSavedConfig = async (config: FormValues) => {
@@ -94,6 +131,7 @@ export default function App() {
           redmineApiKey: savedConfig.redmineApiKey || '',
           gitlabUrl: savedConfig.gitlabUrl || '',
           gitlabToken: savedConfig.gitlabToken || '',
+          mcpServerUrl: savedConfig.mcpServerUrl || '',
         });
 
         if (hasSavedData && savedConfig.redmineApiKey && savedConfig.gitlabToken) {
@@ -109,6 +147,7 @@ export default function App() {
               ...form.getValues(),
               redmineUrl: suggestions.redmineUrl || '',
               gitlabUrl: suggestions.gitlabUrl || '',
+              mcpServerUrl: savedConfig.mcpServerUrl || '',
             });
           }
           setView('form');
@@ -130,10 +169,18 @@ export default function App() {
         redmineApiKey: value.redmineApiKey || '',
         gitlabUrl: value.gitlabUrl || '',
         gitlabToken: value.gitlabToken || '',
+        mcpServerUrl: value.mcpServerUrl || '',
       });
     });
     return () => subscription.unsubscribe();
   }, [form, view]);
+
+  // Carrega status do cache MCP quando estiver no dashboard
+  useEffect(() => {
+    if (view === 'dashboard') {
+      loadCacheStats();
+    }
+  }, [view]);
 
   const onSubmit = async (data: FormValues) => {
     setStatus({ type: 'idle', message: '' });
@@ -213,6 +260,24 @@ export default function App() {
                   <div className="space-y-2">
                     <Label htmlFor="gitlabToken">Access Token</Label>
                     <Input id="gitlabToken" type="password" placeholder="Personal Access Token" {...form.register("gitlabToken")} />
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      <FolderArchive className="w-5 h-5 text-amber-500" />
+                      Claude Desktop MCP (Opcional)
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-normal">Padrão: :47106</span>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="mcpServerUrl">URL do Servidor MCP</Label>
+                    <Input id="mcpServerUrl" type="url" placeholder="http://127.0.0.1:47106" {...form.register("mcpServerUrl")} />
+                    {form.formState.errors.mcpServerUrl && <p className="text-xs text-destructive">{form.formState.errors.mcpServerUrl.message}</p>}
+                    <p className="text-[11px] text-muted-foreground">
+                      Deixe vazio para o servidor local padrão (<code className="font-mono">127.0.0.1:47106</code>) ou informe a URL do servidor MCP da equipe.
+                    </p>
                   </div>
                 </div>
 
@@ -321,6 +386,84 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* Card de Cache de Arquivos Temporários do MCP */}
+              <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+                <div className="flex items-center justify-between border-b p-4">
+                  <div className="flex items-center gap-3">
+                    <FolderArchive className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <h3 className="font-semibold text-sm">Arquivos Temporários (MCP)</h3>
+                      <p className="text-[11px] text-muted-foreground truncate max-w-[180px]" title={cacheStats?.serverUrl || 'http://127.0.0.1:47106'}>
+                        {cacheStats?.serverUrl || 'http://127.0.0.1:47106'}
+                      </p>
+                    </div>
+                  </div>
+                  {cacheStats?.running ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      Conectado
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                      Offline
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Tarefas em cache:</span>
+                    <span className="font-medium text-foreground">
+                      {cacheStats?.taskCount ?? 0} ({cacheStats?.totalFiles ?? 0} arquivos, {(((cacheStats?.totalBytes ?? 0) / 1024)).toFixed(1)} KB)
+                    </span>
+                  </div>
+                  {!cacheStats?.running && (
+                    <div className="p-2.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
+                      <div className="flex items-start gap-1.5 text-amber-800 dark:text-amber-300">
+                        <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Servidor MCP offline em {cacheStats?.serverUrl || 'http://127.0.0.1:47106'}.</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Ao rodar <strong className="text-foreground">npm run dev</strong> a configuração é feita automaticamente. Se precisar rodar manualmente:
+                      </p>
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-amber-500/20">
+                        <code className="text-[11px] bg-background/80 px-1.5 py-0.5 rounded font-mono text-foreground">
+                          npm run setup:mcp
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-[11px] cursor-pointer shrink-0"
+                          type="button"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText('npm run setup:mcp');
+                            setCopiedCommand(true);
+                            setTimeout(() => setCopiedCommand(false), 2000);
+                          }}
+                        >
+                          {copiedCommand ? <Check className="w-3 h-3 text-emerald-500 mr-1" /> : <Copy className="w-3 h-3 mr-1" />}
+                          {copiedCommand ? 'Copiado!' : 'Copiar'}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-500/10 border-rose-500/20 cursor-pointer"
+                    type="button"
+                    disabled={isClearingCache || !cacheStats?.taskCount}
+                    onClick={handleClearCache}
+                  >
+                    {isClearingCache ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    Limpar Arquivos Temporários
+                  </Button>
+                </div>
+              </div>
             </CardContent>
             
             <CardFooter className="shrink-0 p-4 border-t bg-card flex flex-col gap-2">

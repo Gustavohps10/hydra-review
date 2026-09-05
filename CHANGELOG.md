@@ -1,5 +1,22 @@
 # hydra-review
 
+## 0.5.0
+
+### Minor Changes
+
+- **Suporte a Multi-Repositório no Code Review (Front + Back + ERP)**:
+  - Varredura e busca automática de todos os Merge Requests vinculados à tarefa no GitLab via `/api/v4/merge_requests?search=${issueId}`.
+  - Download e consolidação dos diffs de cada repositório na pasta temporária com nomes identificando claramente o projeto (ex: `atak.frontend-MR1000-develop.diff.txt`, `atak.backend-MR1731-develop.diff.txt`, `erpv1-MR37-develop.diff.txt`).
+  - Preservação total da interface visual do popover, mantendo estabilidade na navegação do GitLab.
+- **Requisitos e Histórico Estruturado em Markdown (`tarefa-{issueId}.md`)**:
+  - Substituição do arquivo binário PDF por documento Markdown estruturado extraído da API do Redmine (`include=journals,attachments,relations,children,changesets`).
+  - Inclui descrição completa, campos personalizados (Critério de Validação, Sistema, Módulo, etc.), anexos com links diretos e histórico cronológico completo de discussões e alterações de campos (journals).
+  - Seção dedicada listando todos os Merge Requests vinculados de todos os repositórios com links diretos no Redmine Markdown.
+- **MCP Server Padronizado em TypeScript**:
+  - Migração de 100% dos scripts e do servidor MCP de `.mjs` para TypeScript (`.ts`) com tipagem estática e execução via `tsx`.
+  - Compilação automatizada para executável Windows standalone (`hydra-review-mcp.exe`) via Node SEA e `esbuild`.
+  - Ferramenta MCP `get_hydra_review_context` embutindo automaticamente os requisitos e journals para análise imediata no Claude Desktop.
+
 ## 0.4.1
 
 ### Patch Changes

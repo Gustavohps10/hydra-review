@@ -168,7 +168,7 @@ export default defineContentScript({
   
             targetNodes.forEach((node) => {
               const container = node.closest('.issuable-main-info') || node.parentElement;
-              let badgesContainer = container?.querySelector('.hydra-review-badges-container');
+              let badgesContainer = container?.querySelector<HTMLElement>('.hydra-review-badges-container');
               if (!badgesContainer) {
                 badgesContainer = document.createElement('div');
                 badgesContainer.className = 'hydra-review-badges-container';
@@ -273,7 +273,7 @@ export default defineContentScript({
         await loggerService.addLog('info', 'GitLab', `Sucesso! Mapeadas ${issues.length} tarefas. ${projectIds.length} projetos únicos trouxeram ${Object.keys(usersMap).length} desenvolvedores.`);
 
         // 5. Injetar a UI atualizada (substituindo o skeleton)
-        issues.forEach((issue) => {
+        issues.forEach((issue: RedmineIssue) => {
           const targetNodes = domMap.get(issue.id);
           if (!targetNodes) return;
 
@@ -296,6 +296,8 @@ export default defineContentScript({
                   branchDetails={branchDetails} 
                   gitlabUrl={config.gitlabUrl || window.location.origin}
                   gitlabToken={config.gitlabToken || 'xs34h5P5a7xn26NU8pj2'}
+                  redmineUrl={config.redmineUrl}
+                  redmineApiKey={config.redmineApiKey}
                 />
               );
             }
@@ -373,6 +375,6 @@ export default defineContentScript({
     }
 
     // Executa a primeira vez ao carregar a página
-    setTimeout(processPage, 1000); // Aguarda um breve momento para garantir que a DOM do GitLab renderizou
+    setTimeout(processPage, 200); // Aguarda um breve momento para garantir que a DOM do GitLab renderizou
   },
 });

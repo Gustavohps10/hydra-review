@@ -105,5 +105,66 @@ export const redmineApi = {
       logs.push(`[ERROR] Falha crítica ao buscar memberships: ${e}`);
       return { success: false, data: {}, logs };
     }
-  }
+  },
+
+  /**
+   * Baixa o PDF oficial de uma tarefa do Redmine como Blob.
+   */
+  async getIssuePdfBlob(baseUrl: string, apiKey: string, issueId: number): Promise<Blob | null> {
+    try {
+      const cleanBase = baseUrl.replace(/\/$/, '');
+      const url = `${cleanBase}/issues/${issueId}.pdf?key=${encodeURIComponent(apiKey)}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'X-Redmine-API-Key': apiKey,
+        },
+        credentials: 'omit',
+      });
+
+      if (response.ok) {
+        return await response.blob();
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Busca os dados completos de uma issue no Redmine incluindo journals, anexos, relações e sub-tarefas
+   */
+  async getIssueFullDetails(baseUrl: string, apiKey: string, issueId: number) {
+    try {
+      const cleanBase = (baseUrl || 'http://redmine.atakone.com.br').replace(/\/$/, '');
+      const hasKey = Boolean(apiKey && apiKey.trim());
+      const url = hasKey
+        ? `${cleanBase}/issues/${issueId}.json?include=journals,attachments,relations,children,changesets&key=${encodeURIComponent(apiKey.trim())}`
+        : `${cleanBase}/issues/${issueId}.json?include=journals,attachments,relations,children,changesets`;
+
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+      if (hasKey) {
+        headers['X-Redmine-API-Key'] = apiKey.trim();
+      }
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers,
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return { success: true, issue: data.issue };
+      }
+
+      return { success: false, message: `Erro HTTP ${response.status}` };
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, message: errMessage };
+    }
+  },
 };
