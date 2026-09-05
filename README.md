@@ -8,7 +8,7 @@
 </h2>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.4.1-blue.svg?style=flat-square" alt="Version 0.4.1" />
+  <img src="https://img.shields.io/badge/version-0.5.1-blue.svg?style=flat-square" alt="Version 0.5.1" />
   <img src="https://img.shields.io/badge/TypeScript-007acc?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/platform-Chrome%20Extension-success.svg?style=flat-square" alt="Chrome Extension" />
   <img src="https://img.shields.io/badge/built%20with-WXT%20%7C%20React%20%7C%20Tailwind-blueviolet.svg?style=flat-square" alt="Tech Stack" />
@@ -52,3 +52,8 @@ npm run build
 # Gerar pacote zip para distribuição
 npm run zip
 ```
+
+## 🤝 Fluxo de Trabalho & Releases (Git)
+
+Consulte o documento oficial [GITFLOW.md](./GITFLOW.md) para entender a política de branches, uso do `changeset` para versionamento e como funciona o fluxo de Pull Requests e releases automáticas do projeto.
+
