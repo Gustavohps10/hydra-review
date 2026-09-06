@@ -3,12 +3,12 @@
     <img height="100" src="./src/assets/logo.png" alt="Hydra Review Logo" />
   </div>
 
-  Extensão inteligente para produtividade e visibilidade de Merge Requests e tarefas no GitLab.
+Hydra Review
 
 </h2>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.5.1-blue.svg?style=flat-square" alt="Version 0.5.1" />
+  <img src="https://img.shields.io/badge/version-0.5.1-blue.svg?style=flat-square" alt="Version 0.6.0" />
   <img src="https://img.shields.io/badge/TypeScript-007acc?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/platform-Chrome%20Extension-success.svg?style=flat-square" alt="Chrome Extension" />
   <img src="https://img.shields.io/badge/built%20with-WXT%20%7C%20React%20%7C%20Tailwind-blueviolet.svg?style=flat-square" alt="Tech Stack" />
