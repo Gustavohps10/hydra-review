@@ -166,70 +166,123 @@ export const gitlabApi = {
   },
 
   /**
-   * Baixa o diff unificado de um Merge Request utilizando a API REST oficial (/changes).
+   * Baixa o diff unificado completo de um Merge Request.
+   * Prioriza as rotas de diff bruto nativas do Git/GitLab (.diff e /raw_diffs) para garantir
+   * que nenhum arquivo grande seja colapsado ou truncado (como ocorre na API /changes).
    */
   getMRRawDiff: async (mrUrl: string, token?: string): Promise<string | null> => {
     try {
-      // 1. Tenta extrair projectPath e mrIid da URL para usar a API oficial /changes
+      // 1. Rota .diff nativa do GitLab (retorna o diff completo do Git/Gitaly, idêntico ao download no navegador)
+      const cleanUrl = mrUrl.replace(/\/diffs\/?$/, '').replace(/\/$/, '');
+      const diffUrl = `${cleanUrl}.diff`;
+      const diffHeaders: Record<string, string> = {
+        'Accept': 'text/plain, */*',
+      };
+      if (token) {
+        diffHeaders['PRIVATE-TOKEN'] = token;
+      }
+
+      try {
+        const response = await fetch(diffUrl, {
+          method: 'GET',
+          headers: diffHeaders,
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type') || '';
+          if (!contentType.includes('text/html')) {
+            const text = await response.text();
+            if (text && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
+              return text;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[HydraReview] Falha ao obter diff via .diff, tentando raw_diffs:', err);
+      }
+
+      // 2. Rota oficial /raw_diffs da REST API v4 do GitLab
       const match = mrUrl.match(/(?:https?:\/\/[^/]+)\/(.+?)\/-\/merge_requests\/(\d+)/);
       if (match) {
         const projectPath = match[1];
         const mrIid = match[2];
         const baseUrl = mrUrl.split('/-/')[0].split('/').slice(0, 3).join('/');
         const encodedPath = encodeURIComponent(projectPath);
-        const apiUrl = `${baseUrl}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}/changes`;
+        const rawDiffsUrl = `${baseUrl}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}/raw_diffs`;
 
-        const headers: Record<string, string> = {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+        const apiHeaders: Record<string, string> = {
+          'Accept': 'text/plain, */*',
         };
         if (token) {
-          headers['PRIVATE-TOKEN'] = token;
+          apiHeaders['PRIVATE-TOKEN'] = token;
         }
 
-        const res = await fetch(apiUrl, {
-          method: 'GET',
-          headers,
-          credentials: 'include',
-        });
+        try {
+          const res = await fetch(rawDiffsUrl, {
+            method: 'GET',
+            headers: apiHeaders,
+            credentials: 'include',
+          });
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.changes) && data.changes.length > 0) {
-            let fullDiff = '';
-            for (const c of data.changes) {
-              fullDiff += `diff --git a/${c.old_path} b/${c.new_path}\n`;
-              if (c.new_file) fullDiff += `new file mode 100644\n`;
-              if (c.deleted_file) fullDiff += `deleted file mode 100644\n`;
-              fullDiff += `--- a/${c.old_path}\n+++ b/${c.new_path}\n`;
-              fullDiff += (c.diff || '') + '\n\n';
+          if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
+            if (!contentType.includes('text/html')) {
+              const text = await res.text();
+              if (text && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
+                return text;
+              }
             }
-            return fullDiff.trim();
           }
+        } catch (err) {
+          console.warn('[HydraReview] Falha ao obter diff via raw_diffs, tentando /changes como fallback:', err);
+        }
+
+        // 3. Fallback: REST API oficial /changes (caso endpoints brutos estejam inacessíveis)
+        try {
+          const apiUrl = `${baseUrl}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}/changes`;
+          const changesHeaders: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          };
+          if (token) {
+            changesHeaders['PRIVATE-TOKEN'] = token;
+          }
+
+          const res = await fetch(apiUrl, {
+            method: 'GET',
+            headers: changesHeaders,
+            credentials: 'include',
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data && Array.isArray(data.changes) && data.changes.length > 0) {
+              let fullDiff = '';
+              for (const c of data.changes) {
+                fullDiff += `diff --git a/${c.old_path} b/${c.new_path}\n`;
+                if (c.new_file) fullDiff += `new file mode 100644\n`;
+                if (c.deleted_file) fullDiff += `deleted file mode 100644\n`;
+                fullDiff += `--- a/${c.old_path}\n+++ b/${c.new_path}\n`;
+                if (c.diff) {
+                  fullDiff += c.diff + '\n\n';
+                } else if (c.collapsed || c.too_large) {
+                  fullDiff += `@@ -0,0 +0,0 @@ [Diff colapsado pelo GitLab]\n\n`;
+                } else {
+                  fullDiff += '\n';
+                }
+              }
+              return fullDiff.trim();
+            }
+          }
+        } catch (err) {
+          console.warn('[HydraReview] Falha no fallback /changes:', err);
         }
       }
 
-      // 2. Fallback: rota .diff direta (com validação anti-HTML de tela de login)
-      const cleanUrl = mrUrl.replace(/\/diffs\/?$/, '').replace(/\/$/, '');
-      const diffUrl = `${cleanUrl}.diff`;
-      const fallbackHeaders: Record<string, string> = {};
-      if (token) {
-        fallbackHeaders['PRIVATE-TOKEN'] = token;
-      }
-      const response = await fetch(diffUrl, {
-        method: 'GET',
-        headers: fallbackHeaders,
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('text/html')) {
-          return null; // Ignora redirecionamento para tela de login
-        }
-        return await response.text();
-      }
       return null;
-    } catch {
+    } catch (error) {
+      console.warn('[HydraReview] Erro inesperado ao obter diff do MR:', error);
       return null;
     }
   },

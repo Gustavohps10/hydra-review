@@ -344,6 +344,31 @@ export function IssuePopover({
       const diffEntries: Array<{ label: string; diff: string }> = [];
       const processedMrUrls = new Set<string>();
 
+      // Helper para buscar o diff unificado bruto completo (direto ou via background service worker)
+      const fetchDiffWithFallback = async (targetMrUrl: string): Promise<string | null> => {
+        let diff = await gitlabApi.getMRRawDiff(targetMrUrl, gToken);
+        if (!diff) {
+          try {
+            const bgRes = await new Promise<any>((resolve) => {
+              chrome.runtime.sendMessage(
+                {
+                  type: 'FETCH_GITLAB_MR_DIFF',
+                  payload: { mrUrl: targetMrUrl, token: gToken },
+                },
+                (res) => {
+                  if (chrome.runtime.lastError) resolve(null);
+                  else resolve(res);
+                }
+              );
+            });
+            if (bgRes?.success && bgRes?.diff) {
+              diff = bgRes.diff;
+            }
+          } catch {}
+        }
+        return diff;
+      };
+
       if (allFoundMRs.length > 0) {
         // Ordena: abertos primeiro, depois mesclados por data recente
         allFoundMRs.sort((a, b) => {
@@ -360,7 +385,7 @@ export function IssuePopover({
           if (!mrUrl || processedMrUrls.has(mrUrl)) continue;
           processedMrUrls.add(mrUrl);
 
-          const rawDiff = await gitlabApi.getMRRawDiff(mrUrl, gToken);
+          const rawDiff = await fetchDiffWithFallback(mrUrl);
           if (rawDiff && rawDiff.trim()) {
             const repoName = mr.references?.full ? mr.references.full.split('!')[0].split('/').pop() : `project-${mr.project_id}`;
             const fileName = `${repoName}-MR${mr.iid}-${mr.target_branch}.diff.txt`;
@@ -377,7 +402,7 @@ export function IssuePopover({
         
         if (mrUrl && !processedMrUrls.has(mrUrl)) {
           processedMrUrls.add(mrUrl);
-          const rawDiff = await gitlabApi.getMRRawDiff(mrUrl, gToken);
+          const rawDiff = await fetchDiffWithFallback(mrUrl);
           if (rawDiff && rawDiff.trim()) {
             const repoName = b.projectPath ? b.projectPath.split('/').pop() : 'repo';
             const fileName = `${repoName}-${b.branch}.diff.txt`;

@@ -66,6 +66,16 @@ export default defineBackground(() => {
       return true;
     }
 
+    if (message.type === 'FETCH_GITLAB_MR_DIFF') {
+      const { mrUrl, token } = message.payload;
+      gitlabApi.getMRRawDiff(mrUrl, token)
+        .then(diff => sendResponse({ success: Boolean(diff), diff }))
+        .catch(err => {
+          sendResponse({ success: false, diff: null, message: String(err) });
+        });
+      return true;
+    }
+
     if (message.type === 'FETCH_REDMINE_PDF') {
       const { url, apiKey, issueId } = message.payload;
       const cleanBase = (url || 'http://redmine.atakone.com.br').replace(/\/$/, '');

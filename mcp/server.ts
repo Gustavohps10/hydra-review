@@ -285,6 +285,51 @@ function assembleUnifiedDiff(changes: any[]): string {
   return out.trim();
 }
 
+async function fetchMRRawDiff(projectId: number | string, mrIid: number | string, webUrl?: string): Promise<string | null> {
+  const headers: Record<string, string> = { 'Accept': 'text/plain, */*' };
+  if (GITLAB_TOKEN) {
+    headers['PRIVATE-TOKEN'] = GITLAB_TOKEN;
+  }
+
+  // 1. Rota .diff nativa a partir da web_url do MR
+  if (webUrl) {
+    try {
+      const cleanUrl = webUrl.replace(/\/diffs\/?$/, '').replace(/\/$/, '');
+      const res = await fetch(`${cleanUrl}.diff`, { headers });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
+          return text.trim();
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Rota oficial /raw_diffs da REST API v4 do GitLab
+  if (GITLAB_BASE_URL) {
+    try {
+      const url = `${GITLAB_BASE_URL}/api/v4/projects/${encodeURIComponent(String(projectId))}/merge_requests/${mrIid}/raw_diffs`;
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && !text.trim().startsWith('<!DOCTYPE') && !text.trim().startsWith('<html')) {
+          return text.trim();
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Fallback: API /changes
+  try {
+    const changes = await fetchMRChanges(projectId, mrIid);
+    if (changes && changes.changes) {
+      return assembleUnifiedDiff(changes.changes);
+    }
+  } catch {}
+
+  return null;
+}
+
 async function prepareTaskFromGitLab(issueId: number) {
   const taskDir = cleanTaskDir(issueId);
   const mrs = await fetchGitLabMRsForIssue(issueId);
@@ -304,9 +349,8 @@ async function prepareTaskFromGitLab(issueId: number) {
     summary += `- **Branch:** \`${mr.source_branch}\` ➔ \`${mr.target_branch}\`\n`;
     summary += `- **Status:** ${mr.state} | **Autor:** ${mr.author?.name || 'N/A'}\n\n`;
 
-    const changes = await fetchMRChanges(mr.project_id, mr.iid);
-    if (changes && changes.changes) {
-      const diffContent = assembleUnifiedDiff(changes.changes);
+    const diffContent = await fetchMRRawDiff(mr.project_id, mr.iid, mr.web_url);
+    if (diffContent) {
       const fileName = `${repoName}-MR${mr.iid}-${mr.target_branch}.diff.txt`;
       fs.writeFileSync(path.join(taskDir, fileName), diffContent, 'utf-8');
       savedFiles.push({ name: fileName, size: Buffer.byteLength(diffContent, 'utf-8'), type: 'diff' });
