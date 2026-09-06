@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import * as esbuild from 'esbuild';
+import * as ResEdit from 'resedit';
 
 const ROOT_DIR = path.resolve(import.meta.dirname || path.dirname(new URL(import.meta.url).pathname), '..');
 const OUTPUT_DIR = path.join(ROOT_DIR, '.output');
@@ -75,6 +76,34 @@ async function build(): Promise<void> {
     }
     const buf = Buffer.from(await res.arrayBuffer());
     fs.writeFileSync(TARGET_EXE, buf);
+  }
+
+  // 3.1 Customizar ícone do executável com ResEdit (ícone oficial do Hydra Review MCP)
+  const iconPath = path.join(ROOT_DIR, 'src', 'assets', 'mcp-icon.ico');
+  if (fs.existsSync(iconPath)) {
+    console.log(`🎨 Passo 3.1: Aplicando ícone personalizado (${path.relative(ROOT_DIR, iconPath)}) no executável...`);
+    try {
+      const exeBuffer = fs.readFileSync(TARGET_EXE);
+      const exe = ResEdit.NtExecutable.from(exeBuffer, { ignoreCert: true });
+      const res = ResEdit.NtExecutableResource.from(exe);
+
+      const iconBuffer = fs.readFileSync(iconPath);
+      const iconFile = ResEdit.Data.IconFile.from(iconBuffer);
+
+      ResEdit.Resource.IconGroupEntry.replaceIconsForResource(
+        res.entries,
+        1,
+        1033,
+        iconFile.icons.map((item) => item.data)
+      );
+
+      res.outputResource(exe);
+      const newBinary = Buffer.from(exe.generate());
+      fs.writeFileSync(TARGET_EXE, newBinary);
+      console.log('✅ Ícone aplicado com sucesso no .exe!');
+    } catch (iconErr) {
+      console.warn('⚠️  Não foi possível injetar o ícone personalizado:', iconErr);
+    }
   }
 
   // 4. Injetar o blob no executável usando postject
