@@ -97,7 +97,7 @@ function BranchDiffSummary({
 
     if (mrInfo.projectPath && mrInfo.mrIid) {
       const gUrl = gitlabUrl || window.location.origin;
-      const gToken = gitlabToken || 'xs34h5P5a7xn26NU8pj2';
+      const gToken = gitlabToken || '';
       gitlabApi.getMRDiffStats(gUrl, gToken, mrInfo.projectPath, mrInfo.mrIid, mrInfo.mrUrl).then((res) => {
         if (res) {
           setStats(res);
@@ -284,8 +284,8 @@ export function IssuePopover({
   const redmineDemandsRelease = redmineBranch.includes('release');
 
   // Variáveis para interpolação dinâmica do template do Claude
+  const cleanRedmine = (redmineUrl || '').replace(/\/$/, '');
   const sampleVariables: PromptTemplateVariables = React.useMemo(() => {
-    const cleanRedmine = (redmineUrl || 'http://redmine.atakone.com.br').replace(/\/$/, '');
     return {
       issueId: issue.id,
       issueSubject: issue.subject,
@@ -296,10 +296,10 @@ export function IssuePopover({
       reviewer: responsavelRevisaoText || 'Nenhum',
       branch: redmineBranchValue || 'Não especificada',
       version: redmineVersionValue || 'Não especificada',
-      redmineUrl: `${cleanRedmine}/issues/${issue.id}`,
+      redmineUrl: cleanRedmine ? `${cleanRedmine}/issues/${issue.id}` : '',
       taskFile: `tarefa-${issue.id}.md`,
     };
-  }, [issue, redmineUrl, responsavelRevisaoText, redmineBranchValue, redmineVersionValue]);
+  }, [issue, cleanRedmine, responsavelRevisaoText, redmineBranchValue, redmineVersionValue]);
 
   // Ação: Envia arquivos para o MCP local (pasta temporária limpa) e abre o Claude Desktop
   const handleOpenInClaude = async () => {
@@ -309,7 +309,7 @@ export function IssuePopover({
 
     try {
       const cleanGitlabUrl = gitlabUrl || window.location.origin;
-      const gToken = gitlabToken || 'xs34h5P5a7xn26NU8pj2';
+      const gToken = gitlabToken || '';
 
       // 1. Busca todos os MRs associados a esta tarefa no GitLab (varre todos os repositórios: front, back, erp, etc.)
       const allFoundMRs: any[] = [];
@@ -574,7 +574,12 @@ export function IssuePopover({
               {issue.priority.name}
             </span>
           </div>
-          <a href={`http://redmine.atakone.com.br/issues/${issue.id}`} target="_blank" rel="noreferrer" className="font-semibold text-sm hover:underline line-clamp-2 mt-2 leading-tight">
+          <a 
+            href={cleanRedmine ? `${cleanRedmine}/issues/${issue.id}` : '#'} 
+            target="_blank" 
+            rel="noreferrer" 
+            className="font-semibold text-sm hover:underline line-clamp-2 mt-2 leading-tight"
+          >
             #{issue.id} - {issue.subject}
           </a>
         </div>

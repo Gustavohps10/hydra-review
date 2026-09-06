@@ -14,9 +14,9 @@ import path from 'path';
 import os from 'os';
 import readline from 'readline';
 
-const GITLAB_BASE_URL = 'http://gitlab2.atakone.com.br';
-const GITLAB_TOKEN = 'xs34h5P5a7xn26NU8pj2';
 const HTTP_PORT = 47106;
+const GITLAB_BASE_URL = process.env.GITLAB_URL || process.env.GITLAB_BASE_URL || '';
+const GITLAB_TOKEN = process.env.GITLAB_TOKEN || '';
 
 // Diretório base de tarefas temporárias
 const BASE_CACHE_DIR = path.join(os.homedir(), '.hydra-review', 'tasks');
@@ -242,6 +242,7 @@ server.listen(HTTP_PORT, '127.0.0.1', () => {
 // 2. Helpers para busca direta no GitLab (Fallback se não enviado pela extensão)
 // -------------------------------------------------------------
 async function fetchGitLabMRsForIssue(issueId: number): Promise<any[]> {
+  if (!GITLAB_BASE_URL || !GITLAB_TOKEN) return [];
   try {
     const url = `${GITLAB_BASE_URL}/api/v4/merge_requests?search=${issueId}&scope=all&per_page=50`;
     const res = await fetch(url, {
@@ -256,6 +257,7 @@ async function fetchGitLabMRsForIssue(issueId: number): Promise<any[]> {
 }
 
 async function fetchMRChanges(projectId: number | string, mrIid: number | string): Promise<any | null> {
+  if (!GITLAB_BASE_URL || !GITLAB_TOKEN) return null;
   try {
     const url = `${GITLAB_BASE_URL}/api/v4/projects/${projectId}/merge_requests/${mrIid}/changes`;
     const res = await fetch(url, {
