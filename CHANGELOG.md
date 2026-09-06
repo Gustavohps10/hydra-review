@@ -1,5 +1,11 @@
 # hydra-review
 
+## 0.6.0
+
+### Minor Changes
+
+- 632ccef: Adiciona split button com presets de comando para o Claude Desktop e icone oficial no executavel MCP
+
 ## 0.5.1
 
 ### Patch Changes
