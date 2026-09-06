@@ -1,5 +1,11 @@
 # hydra-review
 
+## 0.6.2
+
+### Patch Changes
+
+- 063af87: Adiciona ícone oficial do MCP com suporte a inversão de temas e cabeçalho com repositório GitHub e estrelas.
+
 ## 0.6.1
 
 ### Patch Changes
