@@ -80,3 +80,13 @@ export interface ReviewSkill {
   isDefault?: boolean;
 }
 
+export interface ClaudePromptPreset {
+  id: string;
+  name: string;
+  description?: string;
+  promptTemplate: string;
+  isDefault?: boolean;
+  createdAt?: number;
+}
+
+

@@ -1,7 +1,7 @@
 {
   "name": "hydra-review",
   "version": "0.5.1",
-  "private": true,
+  "private": false,
   "description": "Hydra Review Chrome Extension",
   "type": "module",
   "scripts": {
@@ -18,8 +18,10 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
+    "@radix-ui/react-dialog": "^1.1.23",
     "@radix-ui/react-hover-card": "^1.1.23",
     "@radix-ui/react-label": "^2.0.2",
+    "@radix-ui/react-popover": "^1.1.23",
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -36,6 +38,7 @@
     "@types/chrome": "^0.0.268",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "resedit": "^3.1.0",
     "tailwindcss": "^4.0.0",
     "tsx": "^4.23.13",
     "typescript": "^5.4.5",

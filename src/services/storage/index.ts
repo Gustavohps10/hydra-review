@@ -1,7 +1,10 @@
-import type { HydraConfig, ReviewSkill } from '@/types';
+import type { HydraConfig, ReviewSkill, ClaudePromptPreset } from '@/types';
+import { DEFAULT_CLAUDE_PRESETS } from '@/utils/prompt-template';
 
 const STORAGE_KEY = 'hydra_config';
 const SKILLS_STORAGE_KEY = 'hydra_review_skills';
+const CLAUDE_PRESETS_STORAGE_KEY = 'hydra_claude_presets';
+const ACTIVE_CLAUDE_PRESET_ID_KEY = 'hydra_active_claude_preset_id';
 
 export const DEFAULT_REVIEW_SKILLS: ReviewSkill[] = [
   {
@@ -145,5 +148,81 @@ export const storageService = {
     await storageService.saveReviewSkills(DEFAULT_REVIEW_SKILLS);
     return DEFAULT_REVIEW_SKILLS;
   },
+
+  /**
+   * Obtém os presets de revisão para o Claude e o ID do preset ativo.
+   */
+  getClaudePresets: async (): Promise<{ presets: ClaudePromptPreset[]; activeId: string }> => {
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.storage.local.get([CLAUDE_PRESETS_STORAGE_KEY, ACTIVE_CLAUDE_PRESET_ID_KEY], (result) => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          const savedPresets = result[CLAUDE_PRESETS_STORAGE_KEY];
+          const presets: ClaudePromptPreset[] = Array.isArray(savedPresets) && savedPresets.length > 0
+            ? savedPresets
+            : DEFAULT_CLAUDE_PRESETS;
+          
+          let activeId = result[ACTIVE_CLAUDE_PRESET_ID_KEY];
+          if (!activeId || !presets.some(p => p.id === activeId)) {
+            activeId = presets[0]?.id || 'completa';
+          }
+          resolve({ presets, activeId });
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  /**
+   * Salva a lista de presets e opcionalmente o ID ativo.
+   */
+  saveClaudePresets: async (presets: ClaudePromptPreset[], activeId?: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const payload: Record<string, any> = { [CLAUDE_PRESETS_STORAGE_KEY]: presets };
+        if (activeId) {
+          payload[ACTIVE_CLAUDE_PRESET_ID_KEY] = activeId;
+        }
+        chrome.storage.local.set(payload, () => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          resolve();
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  /**
+   * Define apenas o preset ativo.
+   */
+  setActiveClaudePresetId: async (activeId: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      try {
+        chrome.storage.local.set({ [ACTIVE_CLAUDE_PRESET_ID_KEY]: activeId }, () => {
+          if (chrome.runtime.lastError) {
+            return reject(chrome.runtime.lastError);
+          }
+          resolve();
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  },
+
+  /**
+   * Restaura os presets de fábrica para o Claude.
+   */
+  resetClaudePresets: async (): Promise<{ presets: ClaudePromptPreset[]; activeId: string }> => {
+    await storageService.saveClaudePresets(DEFAULT_CLAUDE_PRESETS, DEFAULT_CLAUDE_PRESETS[0].id);
+    return { presets: DEFAULT_CLAUDE_PRESETS, activeId: DEFAULT_CLAUDE_PRESETS[0].id };
+  },
 };
+
 
