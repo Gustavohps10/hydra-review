@@ -14,7 +14,7 @@
     "build:mcp": "tsx ./scripts/build-mcp-exe.ts",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "npm run zip && npm run build:mcp"
+    "release": "tsx ./scripts/release.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
