@@ -5,7 +5,7 @@ import * as z from 'zod';
 import { storageService } from '@/services/storage';
 import { redmineApi } from '@/services/api/redmine';
 import { gitlabApi } from '@/services/api/gitlab';
-import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut, RotateCw, FileText, Trash2, FolderArchive, Copy, Check } from 'lucide-react';
+import { Settings, Save, CheckCircle2, XCircle, Loader2, Info, User, Mail, ShieldAlert, Key, LogOut, RotateCw, FileText, Trash2, Star, Copy, Check } from 'lucide-react';
 
 // Shadcn UI
 import { Button } from '@/components/ui/button';
@@ -27,6 +27,43 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 type ViewState = 'loading' | 'form' | 'dashboard' | 'logs';
 
+function GithubHeaderLink({ stars }: { stars: number | null }) {
+  const openGithub = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const url = 'https://github.com/Gustavohps10/hydra-review';
+    if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+      chrome.tabs.create({ url });
+    } else {
+      window.open(url, '_blank');
+    }
+  };
+
+  return (
+    <a
+      href="https://github.com/Gustavohps10/hydra-review"
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={openGithub}
+      className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group cursor-pointer"
+      title="Abrir repositório no GitHub"
+    >
+      <span className="text-border select-none">|</span>
+      <img
+        src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/github-light.svg"
+        alt="GitHub"
+        className="w-3.5 h-3.5 invert dark:invert-0 opacity-80 group-hover:opacity-100 transition-opacity shrink-0"
+      />
+      <span className="font-mono text-[11px] group-hover:underline">gustavohps10/hydra-review</span>
+      <span className="inline-flex items-center gap-0.5 text-amber-500 font-sans">
+        <Star className="w-3 h-3 fill-amber-400 text-amber-400 shrink-0" />
+        <span className="text-[11px] font-mono text-muted-foreground group-hover:text-foreground">
+          {stars !== null ? stars : ''}
+        </span>
+      </span>
+    </a>
+  );
+}
+
 export default function App() {
   const [view, setView] = useState<ViewState>('loading');
   const [status, setStatus] = useState<{ type: 'idle' | 'success' | 'error'; message: string }>({ type: 'idle', message: '' });
@@ -44,6 +81,19 @@ export default function App() {
   } | null>(null);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
+  const [githubStars, setGithubStars] = useState<number | null>(null);
+  const extensionVersion = typeof chrome !== 'undefined' && chrome.runtime?.getManifest ? chrome.runtime.getManifest().version : '';
+
+  useEffect(() => {
+    fetch('https://api.github.com/repos/Gustavohps10/hydra-review')
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data?.stargazers_count === 'number') {
+          setGithubStars(data.stargazers_count);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const loadLogs = async () => {
     const { loggerService } = await import('@/services/logger');
@@ -216,7 +266,7 @@ export default function App() {
             <CardHeader className="shrink-0 pb-4 border-b">
               <div className="flex items-center gap-3 pr-10">
                 <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
                     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full border">
@@ -224,7 +274,10 @@ export default function App() {
                       Configurações
                     </span>
                   </div>
-                  <CardDescription className="text-xs mt-0.5">Configure suas credenciais de acesso.</CardDescription>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] font-mono text-muted-foreground">v{extensionVersion}</span>
+                    <GithubHeaderLink stars={githubStars} />
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -266,8 +319,12 @@ export default function App() {
                 <div className="space-y-4 pt-4 border-t">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                      <FolderArchive className="w-5 h-5 text-amber-500" />
-                      Claude Desktop MCP (Opcional)
+                      <img
+                        src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@latest/icons/mcp.svg"
+                        alt="MCP"
+                        className="w-5 h-5 dark:invert shrink-0"
+                      />
+                       MCP (Opcional)
                     </div>
                     <span className="text-[10px] text-muted-foreground font-normal">Padrão: :47106</span>
                   </div>
@@ -303,7 +360,7 @@ export default function App() {
                   Cancelar
                 </Button>
               )}
-              <Button type="submit" form="config-form" variant="outline" className="flex-1">
+              <Button type="submit" form="config-form"  className="flex-1">
                 <Save className="w-4 h-4 mr-2" />
                 Salvar Configurações
               </Button>
@@ -314,7 +371,7 @@ export default function App() {
             <CardHeader className="shrink-0 pb-4 border-b">
               <div className="flex items-center gap-3 pr-10">
                 <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
@@ -322,7 +379,10 @@ export default function App() {
                       Conectado
                     </span>
                   </div>
-                  <CardDescription className="text-xs mt-0.5">Integrações ativas e autenticadas.</CardDescription>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] font-mono text-muted-foreground">v{extensionVersion}</span>
+                    <GithubHeaderLink stars={githubStars} />
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -391,7 +451,11 @@ export default function App() {
               <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
                 <div className="flex items-center justify-between border-b p-4">
                   <div className="flex items-center gap-3">
-                    <FolderArchive className="w-5 h-5 text-amber-500" />
+                    <img
+                      src="https://cdn.jsdelivr.net/npm/@lobehub/icons-static-svg@latest/icons/mcp.svg"
+                      alt="MCP"
+                      className="w-5 h-5 dark:invert shrink-0"
+                    />
                     <div>
                       <h3 className="font-semibold text-sm">Arquivos Temporários (MCP)</h3>
                       <p className="text-[11px] text-muted-foreground truncate max-w-[180px]" title={cacheStats?.serverUrl || 'http://127.0.0.1:47106'}>
@@ -468,21 +532,7 @@ export default function App() {
             
             <CardFooter className="shrink-0 p-4 border-t bg-card flex flex-col gap-2">
               <div className="flex items-center gap-2 w-full">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="flex-1 text-xs"
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setStatus({ type: 'idle', message: '' });
-                    setView('form');
-                  }}
-                >
-                  <Settings className="w-3.5 h-3.5 mr-1.5" />
-                  Alterar Config
-                </Button>
-                <Button 
+              <Button 
                   variant="default" 
                   size="sm"
                   className="flex-1 text-xs"
@@ -500,7 +550,22 @@ export default function App() {
                   Reconectar
                 </Button>
                 <Button 
-                  variant="secondary" 
+                  variant="outline" 
+                  size="sm"
+                  className="flex-1 text-xs"
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setStatus({ type: 'idle', message: '' });
+                    setView('form');
+                  }}
+                >
+                  <Settings className="w-3.5 h-3.5 mr-1.5" />
+                  Alterar Config
+                </Button>
+                
+                <Button 
+                  variant="outline" 
                   size="sm"
                   className="flex-1 text-xs"
                   type="button"
@@ -520,7 +585,7 @@ export default function App() {
             <CardHeader className="shrink-0 pb-4 border-b">
               <div className="flex items-center gap-3 pr-10">
                 <img src="/icon-48.png" alt="Hydra Review" className="w-8 h-8 rounded-lg shadow-sm border border-border/60 shrink-0" />
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-2">
                     <CardTitle className="text-base font-bold leading-tight">Hydra Review</CardTitle>
                     <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full border">
@@ -528,7 +593,10 @@ export default function App() {
                       Logs
                     </span>
                   </div>
-                  <CardDescription className="text-xs mt-0.5">Logs de execução do Content Script no GitLab.</CardDescription>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] font-mono text-muted-foreground">v{extensionVersion}</span>
+                    <GithubHeaderLink stars={githubStars} />
+                  </div>
                 </div>
               </div>
             </CardHeader>
