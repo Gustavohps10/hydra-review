@@ -295,7 +295,7 @@ export default defineContentScript({
                   targetBranches={detectedBranches} 
                   branchDetails={branchDetails} 
                   gitlabUrl={config.gitlabUrl || window.location.origin}
-                  gitlabToken={config.gitlabToken || 'xs34h5P5a7xn26NU8pj2'}
+                  gitlabToken={config.gitlabToken || ''}
                   redmineUrl={config.redmineUrl}
                   redmineApiKey={config.redmineApiKey}
                 />
