@@ -1,5 +1,12 @@
 # hydra-review
 
+## 0.6.1
+
+### Patch Changes
+
+- 8776a70: Corrige truncamento de diffs do GitLab enviados ao servidor MCP e Claude, priorizando download de diff bruto nativo (.diff e /raw_diffs) sem colapso de arquivos grandes.
+- c63884e: Remove tokens e credenciais hardcoded, garantindo que autenticação ocorra exclusivamente via configuracoes do usuario.
+
 ## 0.6.0
 
 ### Minor Changes
